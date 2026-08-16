@@ -56,6 +56,7 @@ const estilosBase = StyleSheet.create({
   titulo: {
     marginTop: 24,
     fontSize: 36,
+    fontWeight: 'normal',
     color: '#8B72C2',
     fontFamily: 'KronaOne',
     letterSpacing: 2,

@@ -118,9 +118,10 @@ const estilosBase = StyleSheet.create({
   },
   titulo: {
     fontFamily: 'KronaOne',
-    fontSize: 32,
+    fontWeight: 'normal',
+    fontSize: 33,
     color: '#8B72C2',
-    letterSpacing: 1.3,
+    letterSpacing: 1.6,
     marginBottom: 25,
     textAlign: 'center',
     marginTop: -20,

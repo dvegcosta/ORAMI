@@ -2560,15 +2560,9 @@ const estilosBase = StyleSheet.create({
     paddingVertical: 8,
     maxHeight: 100,
   },
-
-  /*
-   * ESTE É O ESPAÇO FIXO.
-   *
-   * Ele sempre existe, independentemente
-   * de imagemComentario ter valor ou não.
-   */
+  
   previewImagemSlot: {
-    height: 80,
+    height: 20,
     width: '100%',
     backgroundColor:
       '#FFF',
