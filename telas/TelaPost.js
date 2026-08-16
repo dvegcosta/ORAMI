@@ -139,15 +139,15 @@ export default function TelaPost({ route, navigation }) {
 
       const paramsDetalhes = isThread
         ? {
-            p_id_comentario: idAtual,
-            p_id_usuario:
-              id_usuario_logado,
-          }
+          p_id_comentario: idAtual,
+          p_id_usuario:
+            id_usuario_logado,
+        }
         : {
-            p_id_postagem: idAtual,
-            p_id_usuario:
-              id_usuario_logado,
-          };
+          p_id_postagem: idAtual,
+          p_id_usuario:
+            id_usuario_logado,
+        };
 
       const {
         data: postData,
@@ -218,13 +218,13 @@ export default function TelaPost({ route, navigation }) {
         const paramId =
           isThread
             ? {
-                p_id_comentario:
-                  idAtual,
-              }
+              p_id_comentario:
+                idAtual,
+            }
             : {
-                p_id_post:
-                  idAtual,
-              };
+              p_id_post:
+                idAtual,
+            };
 
         const {
           data: novoStatus,
@@ -249,16 +249,16 @@ export default function TelaPost({ route, navigation }) {
           qtd_salvamentos:
             novoStatus
               ? Number(
-                  prev.qtd_salvamentos ||
-                    0
-                ) + 1
+                prev.qtd_salvamentos ||
+                0
+              ) + 1
               : Math.max(
-                  0,
-                  Number(
-                    prev.qtd_salvamentos ||
-                      0
-                  ) - 1
-                ),
+                0,
+                Number(
+                  prev.qtd_salvamentos ||
+                  0
+                ) - 1
+              ),
         }));
       } catch (error) {
         console.error(
@@ -284,13 +284,13 @@ export default function TelaPost({ route, navigation }) {
         const paramId =
           isThread
             ? {
-                p_id_comentario:
-                  idAtual,
-              }
+              p_id_comentario:
+                idAtual,
+            }
             : {
-                p_id_post:
-                  idAtual,
-              };
+              p_id_post:
+                idAtual,
+            };
 
         const {
           data: novoStatus,
@@ -315,16 +315,16 @@ export default function TelaPost({ route, navigation }) {
           qtd_curtidas:
             novoStatus
               ? Number(
-                  prev.qtd_curtidas ||
-                    0
-                ) + 1
+                prev.qtd_curtidas ||
+                0
+              ) + 1
               : Math.max(
-                  0,
-                  Number(
-                    prev.qtd_curtidas ||
-                      0
-                  ) - 1
-                ),
+                0,
+                Number(
+                  prev.qtd_curtidas ||
+                  0
+                ) - 1
+              ),
         }));
       } catch (error) {
         console.error(
@@ -371,16 +371,16 @@ export default function TelaPost({ route, navigation }) {
                     qtd_curtidas:
                       novoStatus
                         ? Number(
-                            com.qtd_curtidas ||
-                              0
-                          ) + 1
+                          com.qtd_curtidas ||
+                          0
+                        ) + 1
                         : Math.max(
-                            0,
-                            Number(
-                              com.qtd_curtidas ||
-                                0
-                            ) - 1
-                          ),
+                          0,
+                          Number(
+                            com.qtd_curtidas ||
+                            0
+                          ) - 1
+                        ),
                   };
                 }
 
@@ -543,10 +543,6 @@ export default function TelaPost({ route, navigation }) {
       );
     };
 
-  /* ==========================================================
-     ZOOM / PAN
-     ========================================================== */
-
   const limitarZoom =
     (valor) => {
       return Math.min(
@@ -583,7 +579,7 @@ export default function TelaPost({ route, navigation }) {
 
       return Math.sqrt(
         dx * dx +
-          dy * dy
+        dy * dy
       );
     };
 
@@ -710,20 +706,20 @@ export default function TelaPost({ route, navigation }) {
       if (
         touches.length === 1 &&
         escalaImagemModalRef.current >
-          1
+        1
       ) {
         toqueAnteriorRef.current =
-          {
-            x: touches[0]
-              .pageX,
-            y: touches[0]
-              .pageY,
-          };
+        {
+          x: touches[0]
+            .pageX,
+          y: touches[0]
+            .pageY,
+        };
 
         posicaoInicialArrastoRef.current =
-          {
-            ...posicaoImagemRef.current,
-          };
+        {
+          ...posicaoImagemRef.current,
+        };
       }
     };
 
@@ -745,7 +741,7 @@ export default function TelaPost({ route, navigation }) {
           distanciaAtual &&
           distanciaAtual > 0 &&
           pinchDistanciaInicialRef.current ==
-            null
+          null
         ) {
           pinchDistanciaInicialRef.current =
             distanciaAtual;
@@ -785,16 +781,16 @@ export default function TelaPost({ route, navigation }) {
       if (
         touches.length === 1 &&
         escalaImagemModalRef.current >
-          1 &&
+        1 &&
         toqueAnteriorRef.current
       ) {
         const toqueAtual =
-          {
-            x: touches[0]
-              .pageX,
-            y: touches[0]
-              .pageY,
-          };
+        {
+          x: touches[0]
+            .pageX,
+          y: touches[0]
+            .pageY,
+        };
 
         const deslocamentoX =
           toqueAtual.x -
@@ -809,10 +805,10 @@ export default function TelaPost({ route, navigation }) {
         atualizarPosicao(
           posicaoInicialArrastoRef.current
             .x +
-            deslocamentoX,
+          deslocamentoX,
           posicaoInicialArrastoRef.current
             .y +
-            deslocamentoY
+          deslocamentoY
         );
       }
     };
@@ -842,10 +838,10 @@ export default function TelaPost({ route, navigation }) {
         1;
 
       posicaoImagemRef.current =
-        {
-          x: 0,
-          y: 0,
-        };
+      {
+        x: 0,
+        y: 0,
+      };
 
       setEscalaImagemModal(
         1
@@ -891,7 +887,7 @@ export default function TelaPost({ route, navigation }) {
     };
 
   const compartilharPost =
-    async () => {};
+    async () => { };
 
   const pinchResponder =
     useRef(
@@ -1003,7 +999,7 @@ export default function TelaPost({ route, navigation }) {
             {
               bottom:
                 index ===
-                comentarios.length -
+                  comentarios.length -
                   1
                   ? '50%'
                   : 0,
@@ -1033,8 +1029,8 @@ export default function TelaPost({ route, navigation }) {
               source={
                 item.autor_foto
                   ? {
-                      uri: `data:image/jpeg;base64,${item.autor_foto}`,
-                    }
+                    uri: `data:image/jpeg;base64,${item.autor_foto}`,
+                  }
                   : avatarPadrao
               }
               style={
@@ -1221,13 +1217,13 @@ export default function TelaPost({ route, navigation }) {
   const postEhMeu =
     Boolean(
       idDoAutorPost &&
-        id_usuario_logado &&
-        String(
-          idDoAutorPost
-        ).trim() ===
-          String(
-            id_usuario_logado
-          ).trim()
+      id_usuario_logado &&
+      String(
+        idDoAutorPost
+      ).trim() ===
+      String(
+        id_usuario_logado
+      ).trim()
     );
 
   return (
@@ -1321,8 +1317,8 @@ export default function TelaPost({ route, navigation }) {
                     source={
                       post.autor_foto
                         ? {
-                            uri: `data:image/jpeg;base64,${post.autor_foto}`,
-                          }
+                          uri: `data:image/jpeg;base64,${post.autor_foto}`,
+                        }
                         : avatarPadrao
                     }
                     style={
@@ -1435,10 +1431,10 @@ export default function TelaPost({ route, navigation }) {
                       shadowColor:
                         '#000',
                       shadowOffset:
-                        {
-                          width: 0,
-                          height: 2,
-                        },
+                      {
+                        width: 0,
+                        height: 2,
+                      },
                       shadowOpacity:
                         0.15,
                       shadowRadius:
@@ -1973,33 +1969,33 @@ export default function TelaPost({ route, navigation }) {
 
             {escalaImagemModal ===
               1 && (
-              <View
-                pointerEvents="none"
-                style={
-                  estilos.avisoZoom
-                }
-              >
                 <View
+                  pointerEvents="none"
                   style={
-                    estilos.iconeZoom
+                    estilos.avisoZoom
                   }
                 >
-                  <Ionicons
-                    name="expand-outline"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                </View>
+                  <View
+                    style={
+                      estilos.iconeZoom
+                    }
+                  >
+                    <Ionicons
+                      name="expand-outline"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                  </View>
 
-                <Text
-                  style={
-                    estilos.textoZoom
-                  }
-                >
-                  Use dois dedos para ampliar
-                </Text>
-              </View>
-            )}
+                  <Text
+                    style={
+                      estilos.textoZoom
+                    }
+                  >
+                    Use dois dedos para ampliar
+                  </Text>
+                </View>
+              )}
           </View>
 
           <View
@@ -2025,7 +2021,7 @@ export default function TelaPost({ route, navigation }) {
                   style={[
                     estilos.iconeAcaoModal,
                     post.is_curtido &&
-                      estilos.iconeAcaoAtivaCurtir,
+                    estilos.iconeAcaoAtivaCurtir,
                   ]}
                 >
                   <Ionicons
@@ -2054,7 +2050,7 @@ export default function TelaPost({ route, navigation }) {
                 >
                   {Number(
                     post.qtd_curtidas ||
-                      0
+                    0
                   )}
                 </Text>
               </TouchableOpacity>
@@ -2087,7 +2083,7 @@ export default function TelaPost({ route, navigation }) {
                 >
                   {Number(
                     post.qtd_comentarios ||
-                      0
+                    0
                   )}
                 </Text>
               </TouchableOpacity>
@@ -2105,7 +2101,7 @@ export default function TelaPost({ route, navigation }) {
                   style={[
                     estilos.iconeAcaoModal,
                     post.is_salvo &&
-                      estilos.iconeAcaoAtivaSalvar,
+                    estilos.iconeAcaoAtivaSalvar,
                   ]}
                 >
                   <Ionicons
@@ -2134,7 +2130,7 @@ export default function TelaPost({ route, navigation }) {
                 >
                   {Number(
                     post.qtd_salvamentos ||
-                      0
+                    0
                   )}
                 </Text>
               </TouchableOpacity>
@@ -2167,7 +2163,7 @@ export default function TelaPost({ route, navigation }) {
                 >
                   {Number(
                     post.qtd_compartilhamentos ||
-                      0
+                    0
                   )}
                 </Text>
               </TouchableOpacity>
@@ -2256,13 +2252,6 @@ export default function TelaPost({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* =====================================================
-            ESPAÇO RESERVADO PERMANENTEMENTE PARA A PRÉVIA
-            DA IMAGEM.
-
-            O espaço NÃO desaparece quando a imagem é removida.
-            Apenas o conteúdo interno é alterado.
-            ===================================================== */}
         <View
           style={
             estilos.previewImagemSlot
@@ -2560,7 +2549,7 @@ const estilosBase = StyleSheet.create({
     paddingVertical: 8,
     maxHeight: 100,
   },
-  
+
   previewImagemSlot: {
     height: 20,
     width: '100%',
@@ -2650,7 +2639,7 @@ const estilosBase = StyleSheet.create({
       'absolute',
     top:
       Platform.OS ===
-      'ios'
+        'ios'
         ? 48
         : 32,
     left: 0,
@@ -2741,7 +2730,7 @@ const estilosBase = StyleSheet.create({
       'absolute',
     bottom:
       Platform.OS ===
-      'ios'
+        'ios'
         ? 138
         : 128,
     alignSelf:

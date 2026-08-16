@@ -103,10 +103,6 @@ const carregarPostsFeed = async () => {
       const topic = `orami-notificacoes-home-${id_usuario}`;
       let canal = null;
 
-      // A Home permanece montada dentro do Tab Navigator. Ao trocar de aba,
-      // um canal antigo pode ainda estar registrado no cliente Supabase.
-      // Removemos somente esse tópico antes de criar o novo canal, evitando
-      // qualquer tentativa de adicionar callbacks depois de subscribe().
       const canalExistente = supabase
         .getChannels()
         .find((item) => item?.topic === `realtime:${topic}`);

@@ -162,7 +162,6 @@ export const BarraMenuGlobal = ({ rotaAtual }) => {
     }).start();
   }, [indiceAtivo, translateX]);
 
-  // Se não carregou o usuário ou a rota atual estiver na lista de bloqueio, esconde o menu
   if (!authVerificado || !idUsuario) return null;
   if (rotaAtual && TELAS_SEM_MENU.includes(rotaAtual.name)) return null;
 
@@ -241,7 +240,6 @@ export default function MenuNavegacao({ route, navigation }) {
       const childState = menuRoute?.state;
       const indiceAtual = childState?.index ?? 2;
 
-      // CORREÇÃO: Usando a navegação aninhada (nested navigation)
       if (gestureState.dx < 0 && indiceAtual < ROTAS_MENU.length - 1) {
         navigation.navigate('MenuNavegacao', {
           screen: ROTAS_MENU[indiceAtual + 1],
