@@ -30,6 +30,11 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
   const [temaEditado, setTemaEditado] = useState('');
   const [descricaoEditada, setDescricaoEditada] = useState('');
   const [pastaSelecionada, setPastaSelecionada] = useState(null);
+  const [pastaSelecionadaNovo, setPastaSelecionadaNovo] = useState(null);
+  const [modalOpcoesPastaVisivel, setModalOpcoesPastaVisivel] = useState(false);
+  const [pastaOpcoes, setPastaOpcoes] = useState(null);
+  const [editandoNomePasta, setEditandoNomePasta] = useState(false);
+  const [novoNomePasta, setNovoNomePasta] = useState('');
 
   useEffect(() => {
     carregarPerfil();
@@ -43,13 +48,14 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
     } catch (e) { console.error(e); }
   };
 
-  const carregarDados = async () => {
+ const carregarDados = async () => {
   setCarregando(true);
   try {
     const { data: dataRegistros, error: errRegistros } = await supabase
       .from('registros_diarios')
       .select('*')
       .eq('id_usuario', id_usuario)
+      .is('id_pasta', null)
       .order('criado_em', { ascending: false });
 
     if (errRegistros) throw errRegistros;
@@ -81,17 +87,16 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         id_usuario: id_usuario,
         tema: novoTema.trim() || 'Registro diário',
         descricao: novaDescricao.trim(),
+        id_pasta: pastaSelecionadaNovo || null,
       });
     if (error) throw error;
     setModalNovoVisivel(false);
     setNovoTema('');
     setNovaDescricao('');
+    setPastaSelecionadaNovo(null);
     carregarDados();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    setSalvando(false);
-  }
+  } catch (e) { console.error(e); }
+  finally { setSalvando(false); }
 };
 
 const abrirRegistro = (item) => {
@@ -151,7 +156,41 @@ const criarPasta = async () => {
   finally { setCriandoPasta(false); }
 };
 
+const abrirOpcoesPasta = (pasta) => {
+  setPastaOpcoes(pasta);
+  setNovoNomePasta(pasta.nome);
+  setEditandoNomePasta(false);
+  setModalOpcoesPastaVisivel(true);
+};
+
+const renomearPasta = async () => {
+  if (!novoNomePasta.trim()) return;
+  try {
+    const { error } = await supabase
+      .from('pastas_registros')
+      .update({ nome: novoNomePasta.trim() })
+      .eq('id_pasta', pastaOpcoes.id_pasta);
+    if (error) throw error;
+    setModalOpcoesPastaVisivel(false);
+    setEditandoNomePasta(false);
+    await carregarDados();
+  } catch (e) { console.error(e); }
+};
+
+const excluirPasta = async () => {
+  try {
+    const { error } = await supabase
+      .from('pastas_registros')
+      .update({ status: 'inativo' })
+      .eq('id_pasta', pastaOpcoes.id_pasta);
+    if (error) throw error;
+    setModalOpcoesPastaVisivel(false);
+    carregarDados();
+  } catch (e) { console.error(e); }
+};
+
   return (
+    
     
     
     <SafeAreaView style={estilos.telaPrincipal}>
@@ -167,7 +206,10 @@ const criarPasta = async () => {
       </View>
 
       <FlatList
-        data={registros}
+        data={pastaSelecionada 
+  ? registros.filter(r => r.id_pasta === pastaSelecionada.id_pasta)
+  : registros
+}
         keyExtractor={(item) => item.id_registro_diario.toString()}
         contentContainerStyle={{ paddingBottom: 100 }}
        
@@ -196,25 +238,20 @@ const criarPasta = async () => {
       </View>
     </View>
 
-    {pastas.length > 0 && (
-      <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-        {pastas.map((pasta) => (
-          <TouchableOpacity
-            key={pasta.id_pasta}
-            style={estilos.itemPasta}
-          >
-            <Ionicons name="folder" size={20} color="#8C77C2" />
-
-            <Text style={estilos.txtPasta}>
-              {pasta.nome}
-            </Text>
-
-            <Ionicons
-              name="ellipsis-vertical"
-              size={18}
-              color="#BDBDBD"
-            />
-          </TouchableOpacity>
+  {pastas.length > 0 && (
+  <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+    {pastas.map((pasta) => (
+      <TouchableOpacity
+  key={pasta.id_pasta}
+  style={estilos.itemPasta}
+  onPress={() => navigation.navigate('TelaContPasta', { pasta, id_usuario })}
+>
+  <Ionicons name="folder" size={20} color="#8C77C2" />
+  <Text style={estilos.txtPasta}>{pasta.nome}</Text>
+ <TouchableOpacity onPress={() => abrirOpcoesPasta(pasta)}>
+  <Ionicons name="ellipsis-vertical" size={18} color="#BDBDBD" />
+ </TouchableOpacity>
+</TouchableOpacity>
         ))}
       </View>
     )}
@@ -230,9 +267,6 @@ const criarPasta = async () => {
                 {new Date(item.criado_em).toLocaleDateString('pt-BR')} · {new Date(item.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
-            <TouchableOpacity>
-              <Ionicons name="ellipsis-vertical" size={18} color="#BDBDBD" />
-            </TouchableOpacity>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -277,6 +311,30 @@ const criarPasta = async () => {
         onChangeText={setNovaDescricao}
         multiline
       />
+
+      {pastas.length > 0 && (
+  <View style={{ marginBottom: 12 }}>
+    <Text style={{ fontSize: 13, color: '#999', fontFamily: 'REM_Medium', marginBottom: 8 }}>Pasta (opcional)</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {pastas.map(p => (
+        <TouchableOpacity
+          key={p.id_pasta}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: pastaSelecionadaNovo === p.id_pasta ? '#8C77C2' : '#EDE0FF',
+            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+          }}
+          onPress={() => setPastaSelecionadaNovo(prev => prev === p.id_pasta ? null : p.id_pasta)}
+        >
+          <Ionicons name="folder" size={14} color={pastaSelecionadaNovo === p.id_pasta ? '#FFF' : '#8C77C2'} />
+          <Text style={{ fontSize: 13, fontFamily: 'REM_Medium', color: pastaSelecionadaNovo === p.id_pasta ? '#FFF' : '#8C77C2' }}>
+            {p.nome}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+)}
 
       <TouchableOpacity style={estilos.btnSalvar} onPress={salvarRegistro} disabled={salvando}>
         {salvando ? (
@@ -370,6 +428,54 @@ const criarPasta = async () => {
       <TouchableOpacity style={estilos.btnSalvar} onPress={criarPasta} disabled={criandoPasta}>
         {criandoPasta ? <ActivityIndicator color="#FFF" /> : <Text style={estilos.txtBtnSalvar}>Criar pasta</Text>}
       </TouchableOpacity>
+
+    </View>
+  </View>
+</Modal>
+
+<Modal visible={modalOpcoesPastaVisivel} transparent animationType="fade" onRequestClose={() => setModalOpcoesPastaVisivel(false)}>
+  <View style={estilos.modalCentralOverlay}>
+    <View style={estilos.modalCentral}>
+      <View style={estilos.modalHeader}>
+        <Ionicons name="folder" size={18} color="#8C77C2" />
+        <Text style={estilos.modalTitulo}>{pastaOpcoes?.nome}</Text>
+        <TouchableOpacity onPress={() => setModalOpcoesPastaVisivel(false)}>
+          <Ionicons name="close" size={22} color="#BDBDBD" />
+        </TouchableOpacity>
+      </View>
+
+      {editandoNomePasta ? (
+        <>
+          <TextInput
+            style={estilos.inputTema}
+            value={novoNomePasta}
+            onChangeText={setNovoNomePasta}
+            placeholder="Novo nome"
+            placeholderTextColor="#BDBDBD"
+          />
+          <TouchableOpacity style={estilos.btnSalvar} onPress={renomearPasta}>
+            <Text style={estilos.txtBtnSalvar}>Salvar nome</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity
+            style={estilos.btnOpcaoPasta}
+            onPress={() => setEditandoNomePasta(true)}
+          >
+            <Ionicons name="pencil" size={18} color="#8C77C2" />
+            <Text style={estilos.txtOpcaoPasta}>Renomear pasta</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[estilos.btnOpcaoPasta, { borderTopWidth: 1, borderTopColor: '#F0F0F0' }]}
+            onPress={excluirPasta}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
+            <Text style={[estilos.txtOpcaoPasta, { color: '#FF6B6B' }]}>Excluir pasta</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
     </View>
   </View>
@@ -605,6 +711,18 @@ const estilosBase = StyleSheet.create({
 txtPasta: {
   flex: 1,
   fontSize: 14,
+  fontFamily: 'REM_Medium',
+  color: '#333',
+},
+
+btnOpcaoPasta: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 12,
+  paddingVertical: 16,
+},
+txtOpcaoPasta: {
+  fontSize: 15,
   fontFamily: 'REM_Medium',
   color: '#333',
 },

@@ -39,6 +39,7 @@ import TelaRegistrarCrise from './telas/TelaRegistrarCrise';
 import TelaComunicacao from './telas/TelaComunicacao';
 import TelaCriarRotina from './telas/TelaCriarRotina';
 import TelaRegistrosDiarios from './telas/TelaRegistrosDiarios';
+import TelaContPasta from './telas/TelaContPasta';
 import { ProvedorTema, usarTema } from './lib/tema';
 import { ProvedorPopup } from './lib/popup';
 
@@ -159,6 +160,11 @@ function RotasApp() {
               name="TelaMinhasComunidades"
               component={TelaMinhasComunidades}
             />
+
+            <Pilha.Screen 
+             name="TelaContPasta"
+             component={TelaContPasta} 
+             />
 
             <Pilha.Screen
               name="TelaConfigComunidade"
