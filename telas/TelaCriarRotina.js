@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, View, SafeAreaView, TouchableOpacity,
-  FlatList, Modal, TextInput, ActivityIndicator, Image, ScrollView
+  StyleSheet, Text, View, SafeAreaView,
+  TouchableOpacity, FlatList, Modal, TextInput, ActivityIndicator, Alert, Image, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,161 +9,282 @@ import { supabase } from '../lib/supabase';
 import { useEstilosTema, usarTema } from '../lib/tema';
 import MenuLateral from './MenuLateral';
 
-export default function TelaCriarRotina({ route, navigation }) {
+export default function TelaRotinas({ route, navigation }) {
   const estilos = useEstilosTema(estilosBase);
   const { cores } = usarTema();
   const { id_usuario } = route.params || {};
 
   const [menuVisivel, setMenuVisivel] = useState(false);
   const [perfil, setPerfil] = useState({ nome: 'Carregando...', fotoBase64: null });
-  const [rotinas, setRotinas] = useState([]);
-  const [rotinaSelecionada, setRotinaSelecionada] = useState(null);
-  const [atividades, setAtividades] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
-  const [modalAtividadeVisivel, setModalAtividadeVisivel] = useState(false);
-  const [modalNovaRotinaVisivel, setModalNovaRotinaVisivel] = useState(false);
-  const [nomeRotina, setNomeRotina] = useState('');
-  const [salvandoRotina, setSalvandoRotina] = useState(false);
-
+  const [idRotina, setIdRotina] = useState(null);
+  const [atividades, setAtividades] = useState([]);
+  const [atividadesSistema, setAtividadesSistema] = useState([]);
+  
   const [nomeAtividade, setNomeAtividade] = useState('');
   const [horarioInicio, setHorarioInicio] = useState('');
-  const [duracao, setDuracao] = useState('');
-  const [permitirStatus, setPermitirStatus] = useState(true);
+  const [duracaoMinutos, setDuracaoMinutos] = useState('');
   const [imagemAtividade, setImagemAtividade] = useState(null);
-  const [salvandoAtividade, setSalvandoAtividade] = useState(false);
+  const [tipoCriacao, setTipoCriacao] = useState('personalizada');
+  const [atividadeSistemaSelecionada, setAtividadeSistemaSelecionada] = useState(null);
+  const [atividadeSelecionada, setAtividadeSelecionada] = useState(null);
+  const [editando, setEditando] = useState(false);
+
+  const [modalNovoVisivel, setModalNovoVisivel] = useState(false);
+  const [modalVisualizarVisivel, setModalVisualizarVisivel] = useState(false);
+  const [dropdownTipoVisivel, setDropdownTipoVisivel] = useState(false);
+  const [dropdownImagemVisivel, setDropdownImagemVisivel] = useState(false);
+  const [dropdownSistemaVisivel, setDropdownSistemaVisivel] = useState(false);
 
   useEffect(() => {
-    carregarPerfil();
-    carregarRotinas();
-  }, []);
+    if (id_usuario) {
+      inicializarDados();
+    }
+  }, [id_usuario]);
+
+  const inicializarDados = async () => {
+    await carregarPerfil();
+    await carregarAtividadesSistema();
+    await carregarDadosRotina();
+  };
 
   const carregarPerfil = async () => {
     try {
       const { data, error } = await supabase.rpc('obter_perfil_usuario', { p_id_usuario: id_usuario });
-      if (data && !error) setPerfil({ nome: data.nome, fotoBase64: data.foto_base64 });
-    } catch (e) { console.error(e); }
+      if (error) throw error;
+      if (data) setPerfil({ nome: data.nome, fotoBase64: data.foto_base64 });
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível carregar as informações do perfil.');
+    }
   };
 
-  const carregarRotinas = async () => {
+  const carregarAtividadesSistema = async () => {
+    try {
+      const { data, error } = await supabase.from('atividades').select('*');
+      if (error) throw error;
+      if (data) setAtividadesSistema(data);
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível carregar as atividades predefinidas.');
+    }
+  };
+
+  const carregarDadosRotina = async () => {
     setCarregando(true);
     try {
-      const { data, error } = await supabase
+      let { data: rotinaData, error: errRotina } = await supabase
         .from('rotinas')
-        .select('*')
-        .eq('id_usuario', id_usuario);
-      if (error) throw error;
-      setRotinas(data || []);
-    } catch (e) { console.error(e); }
-    finally { setCarregando(false); }
+        .select('id_rotina, ultima_atualizacao')
+        .eq('id_usuario', id_usuario)
+        .maybeSingle();
+
+      let rotinaAtualId = rotinaData?.id_rotina || null;
+      const dataHoje = new Date().toISOString().split('T')[0];
+
+      if (!rotinaData) {
+        const { data: novaRotina, error: errNovaRotina } = await supabase
+          .from('rotinas')
+          .insert({ id_usuario: id_usuario, ultima_atualizacao: dataHoje })
+          .select()
+          .single();
+        
+        if (errNovaRotina) throw errNovaRotina;
+        rotinaAtualId = novaRotina.id_rotina;
+      } else if (rotinaData.ultima_atualizacao !== dataHoje) {
+        await supabase
+          .from('atividades_rotina')
+          .update({ realizado: false })
+          .eq('id_rotina', rotinaAtualId);
+
+        await supabase
+          .from('rotinas')
+          .update({ ultima_atualizacao: dataHoje })
+          .eq('id_rotina', rotinaAtualId);
+      }
+
+      setIdRotina(rotinaAtualId);
+
+      if (rotinaAtualId) {
+        const { data: dataAtividades, error: errAtividades } = await supabase
+          .from('atividades_rotina')
+          .select('*')
+          .eq('id_rotina', rotinaAtualId)
+          .order('horario_inicio', { ascending: true });
+
+        if (errAtividades) throw errAtividades;
+        setAtividades(dataAtividades || []);
+      }
+    } catch (e) {
+      Alert.alert('Erro', 'Falha ao processar os dados da rotina.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
-  const carregarAtividades = async (id_rotina) => {
+  const mascararHorario = (texto) => {
+    return texto.replace(/\D/g, '');
+  };
+
+  const formatarHorarioParaBanco = (horario) => {
+    return horario ? horario.trim() : null;
+  };
+
+  const formatarHorarioParaExibicao = (horario) => {
+    return horario ? horario : '';
+  };
+
+  const manipularImagem = async (origem) => {
+    setDropdownImagemVisivel(false);
     try {
-      const { data, error } = await supabase
-        .from('atividades_rotina')
-        .select('*')
-        .eq('id_rotina', id_rotina);
-      if (error) throw error;
-      setAtividades(data || []);
-    } catch (e) { console.error(e); }
+      let permissao;
+      let resultado;
+
+      if (origem === 'camera') {
+        permissao = await ImagePicker.requestCameraPermissionsAsync();
+        if (permissao.status !== 'granted') throw new Error('É necessário conceder acesso à câmera.');
+        resultado = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+      } else {
+        permissao = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permissao.status !== 'granted') throw new Error('É necessário conceder acesso à galeria.');
+        resultado = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+      }
+
+      if (!resultado.canceled && resultado.assets?.length > 0) {
+        setImagemAtividade(resultado.assets[0].base64);
+      }
+    } catch (erro) {
+      Alert.alert('Permissão Necessária', erro.message);
+    }
   };
 
-  const selecionarRotina = (rotina) => {
-    setRotinaSelecionada(rotina);
-    carregarAtividades(rotina.id_rotina);
-  };
-
-  const criarRotina = async () => {
-    if (!nomeRotina.trim()) return;
-    setSalvandoRotina(true);
-    try {
-      const { data, error } = await supabase
-        .from('rotinas')
-        .insert({ id_usuario, nome: nomeRotina.trim() })
-        .select()
-        .single();
-      if (error) throw error;
-      setModalNovaRotinaVisivel(false);
-      setNomeRotina('');
-      await carregarRotinas();
-      selecionarRotina(data);
-    } catch (e) { console.error(e); }
-    finally { setSalvandoRotina(false); }
-  };
-
-  const excluirRotina = async () => {
-    if (!rotinaSelecionada) return;
-    try {
-      const { error } = await supabase
-        .from('rotinas')
-        .delete()
-        .eq('id_rotina', rotinaSelecionada.id_rotina);
-      if (error) throw error;
-      setRotinaSelecionada(null);
-      setAtividades([]);
-      await carregarRotinas();
-    } catch (e) { console.error(e); }
-  };
-
-  const selecionarImagem = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled) setImagemAtividade(result.assets[0].base64);
+  const validarFormulario = () => {
+    if (tipoCriacao === 'personalizada' && !nomeAtividade.trim()) {
+      Alert.alert('Atenção', 'O nome da atividade personalizada é obrigatório.');
+      return false;
+    }
+    if (tipoCriacao === 'sistema' && !atividadeSistemaSelecionada) {
+      Alert.alert('Atenção', 'Selecione uma atividade do sistema.');
+      return false;
+    }
+    if (!idRotina) {
+      Alert.alert('Atenção', 'Erro de identificação da rotina. Tente recarregar a tela.');
+      return false;
+    }
+    return true;
   };
 
   const salvarAtividade = async () => {
-    if (!nomeAtividade.trim()) return;
-    setSalvandoAtividade(true);
+    if (!validarFormulario()) return;
+    
+    setSalvando(true);
+    try {
+      const nomeFinal = tipoCriacao === 'personalizada' ? nomeAtividade.trim() : atividadeSistemaSelecionada.nome;
+      const imagemFinal = imagemAtividade || (tipoCriacao === 'sistema' ? atividadeSistemaSelecionada.imagem : null);
+
+      const dadosInsercao = {
+        id_rotina: idRotina,
+        nome_personalizado: nomeFinal,
+        horario_inicio: formatarHorarioParaBanco(horarioInicio),
+        duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos, 10) : null,
+        imagem_personalizada: imagemFinal,
+        permitir_status: true,
+        realizado: false
+      };
+
+      const { error } = await supabase.from('atividades_rotina').insert([dadosInsercao]);
+      if (error) throw error;
+      
+      encerrarFormulario();
+      await carregarDadosRotina();
+    } catch (e) {
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar salvar a atividade.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const salvarEdicao = async () => {
+    if (!nomeAtividade.trim() || !atividadeSelecionada) {
+      Alert.alert('Atenção', 'Preencha o nome da atividade.');
+      return;
+    }
+    
+    setSalvando(true);
     try {
       const { error } = await supabase
         .from('atividades_rotina')
-        .insert({
-          id_rotina: rotinaSelecionada.id_rotina,
+        .update({
           nome_personalizado: nomeAtividade.trim(),
-          imagem_personalizada: imagemAtividade || null,
-          horario_inicio: horarioInicio || null,
-          duracao_minutos: duracao ? parseInt(duracao) : null,
-          permitir_status: permitirStatus,
-          realizado: false,
-        });
+          horario_inicio: formatarHorarioParaBanco(horarioInicio),
+          duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos, 10) : null,
+          imagem_personalizada: imagemAtividade
+        })
+        .eq('id_atividade_rotina', atividadeSelecionada.id_atividade_rotina);
+        
       if (error) throw error;
-      setModalAtividadeVisivel(false);
-      setNomeAtividade('');
-      setHorarioInicio('');
-      setDuracao('');
-      setPermitirStatus(true);
-      setImagemAtividade(null);
-      await carregarAtividades(rotinaSelecionada.id_rotina);
-    } catch (e) { console.error(e); }
-    finally { setSalvandoAtividade(false); }
+      
+      setEditando(false);
+      setModalVisualizarVisivel(false);
+      await carregarDadosRotina();
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível atualizar a atividade solicitada.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
-  const excluirAtividade = async (id_atividade_rotina) => {
+  const excluirAtividade = async () => {
+    if (!atividadeSelecionada) return;
+    
     try {
       const { error } = await supabase
         .from('atividades_rotina')
         .delete()
-        .eq('id_atividade_rotina', id_atividade_rotina);
+        .eq('id_atividade_rotina', atividadeSelecionada.id_atividade_rotina);
+        
       if (error) throw error;
-      await carregarAtividades(rotinaSelecionada.id_rotina);
-    } catch (e) { console.error(e); }
+      
+      setModalVisualizarVisivel(false);
+      setAtividadeSelecionada(null);
+      await carregarDadosRotina();
+    } catch (e) {
+      Alert.alert('Erro', 'Falha ao tentar remover a atividade.');
+    }
   };
 
-  const toggleRealizado = async (item) => {
+  const alternarRealizado = async (item) => {
     try {
       const { error } = await supabase
         .from('atividades_rotina')
         .update({ realizado: !item.realizado })
         .eq('id_atividade_rotina', item.id_atividade_rotina);
+        
       if (error) throw error;
-      await carregarAtividades(rotinaSelecionada.id_rotina);
-    } catch (e) { console.error(e); }
+      await carregarDadosRotina();
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível alterar o status da atividade.');
+    }
+  };
+
+  const abrirAtividade = (item) => {
+    setAtividadeSelecionada(item);
+    setNomeAtividade(item.nome_personalizado || '');
+    setHorarioInicio(formatarHorarioParaExibicao(item.horario_inicio));
+    setDuracaoMinutos(item.duracao_minutos ? String(item.duracao_minutos) : '');
+    setImagemAtividade(item.imagem_personalizada || null);
+    setEditando(false);
+    setModalVisualizarVisivel(true);
+  };
+
+  const encerrarFormulario = () => {
+    setNomeAtividade('');
+    setHorarioInicio('');
+    setDuracaoMinutos('');
+    setImagemAtividade(null);
+    setTipoCriacao('personalizada');
+    setAtividadeSistemaSelecionada(null);
+    setModalNovoVisivel(false);
   };
 
   return (
@@ -173,107 +294,69 @@ export default function TelaCriarRotina({ route, navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.iconeBotao}>
             <Ionicons name="arrow-back" size={24} color="#8C77C2" />
           </TouchableOpacity>
-          <Ionicons name="create-outline" size={22} color="#8C77C2" style={{ marginRight: 6 }} />
-          <Text style={estilos.tituloHeader}>
-            {rotinaSelecionada ? 'Rotina atual' : 'Criar rotina'}
-          </Text>
+          <Text style={estilos.tituloHeader}>Minha Rotina</Text>
         </View>
-        {rotinaSelecionada && (
-          <View style={estilos.headerDireita}>
-            <TouchableOpacity style={estilos.iconeBotao}>
-              <Ionicons name="pencil" size={20} color="#8C77C2" />
-            </TouchableOpacity>
-            <TouchableOpacity style={estilos.iconeBotao} onPress={excluirRotina}>
-              <Ionicons name="trash-outline" size={20} color="#8C77C2" />
-            </TouchableOpacity>
-            <TouchableOpacity style={estilos.iconeBotao} onPress={() => setRotinaSelecionada(null)}>
-              <Ionicons name="swap-horizontal-outline" size={20} color="#8C77C2" />
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
-      {!rotinaSelecionada ? (
-        <View style={estilos.containerSemRotina}>
-          {carregando ? (
-            <ActivityIndicator size="large" color="#8C77C2" />
-          ) : rotinas.length === 0 ? (
-            <Text style={estilos.textoVazio}>A rotina criada será exibida neste espaço</Text>
-          ) : (
-            <FlatList
-              data={rotinas}
-              keyExtractor={(item) => item.id_rotina.toString()}
-              contentContainerStyle={{ padding: 20 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={estilos.itemRotina} onPress={() => selecionarRotina(item)}>
-                  <Ionicons name="create-outline" size={20} color="#8C77C2" />
-                  <Text style={estilos.txtRotina}>{item.nome}</Text>
-                  <Ionicons name="chevron-forward" size={18} color="#BDBDBD" />
-                </TouchableOpacity>
-              )}
-            />
-          )}
-          <TouchableOpacity style={estilos.btnNovaRotina} onPress={() => setModalNovaRotinaVisivel(true)}>
-            <Ionicons name="add" size={24} color="#8C77C2" />
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity style={estilos.btnAdicionarAtividade} onPress={() => setModalAtividadeVisivel(true)}>
-            <Ionicons name="add" size={18} color="#8C77C2" />
-            <Text style={estilos.txtAdicionarAtividade}>Adicionar atividade</Text>
-          </TouchableOpacity>
-
-          <FlatList
-            data={atividades}
-            keyExtractor={(item) => item.id_atividade_rotina.toString()}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
-            ListEmptyComponent={<Text style={estilos.textoVazio}>Nenhuma atividade ainda.</Text>}
-            renderItem={({ item }) => (
-              <View style={estilos.cardAtividade}>
-                <TouchableOpacity onPress={() => excluirAtividade(item.id_atividade_rotina)} style={estilos.btnFecharAtividade}>
-                  <Ionicons name="close" size={16} color="#BDBDBD" />
-                </TouchableOpacity>
-
-                {item.imagem_personalizada ? (
-                  <Image source={{ uri: `data:image/jpeg;base64,${item.imagem_personalizada}` }} style={estilos.imagemAtividade} />
-                ) : (
-                  <View style={[estilos.imagemAtividade, { backgroundColor: '#EDE0FF', justifyContent: 'center', alignItems: 'center' }]}>
-                    <Ionicons name="image-outline" size={30} color="#8C77C2" />
-                  </View>
-                )}
-
-                <View style={estilos.infoAtividade}>
-                  <Text style={estilos.nomeAtividade}>{item.nome_personalizado}</Text>
-                  {item.horario_inicio && (
-                    <Text style={estilos.horarioAtividade}>{item.horario_inicio?.slice(0, 5)}</Text>
-                  )}
-                  {item.duracao_minutos && (
-                    <Text style={estilos.duracaoAtividade}>{item.duracao_minutos}min</Text>
-                  )}
-                </View>
-
-                {item.permitir_status && (
-                  <TouchableOpacity onPress={() => toggleRealizado(item)}>
-                    <Ionicons
-                      name={item.realizado ? 'checkbox' : 'square-outline'}
-                      size={24}
-                      color="#8C77C2"
-                    />
-                  </TouchableOpacity>
-                )}
+      <FlatList
+        data={atividades}
+        keyExtractor={(item) => item.id_atividade_rotina.toString()}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        ListHeaderComponent={
+          <View style={estilos.barraAcoes}>
+            <Text style={estilos.subtitulo}>Atividades do dia</Text>
+            <View style={estilos.iconesDireita}>
+              <TouchableOpacity
+                style={estilos.iconeBotao}
+                onPress={() => {
+                  encerrarFormulario();
+                  setModalNovoVisivel(true);
+                }}
+              >
+                <Ionicons name="add-circle" size={28} color="#8C77C2" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity style={estilos.itemRegistroGrande} activeOpacity={0.8} onPress={() => abrirAtividade(item)}>
+            {item.imagem_personalizada ? (
+              <Image source={{ uri: `data:image/jpeg;base64,${item.imagem_personalizada}` }} style={estilos.imagemCardGrande} />
+            ) : (
+              <View style={[estilos.imagemCardGrande, { backgroundColor: '#F0EBF8', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="image-outline" size={32} color="#8C77C2" />
               </View>
             )}
-          />
+            
+            <View style={estilos.conteudoCardGrande}>
+              <View style={estilos.infoRegistro}>
+                <Text style={[estilos.tituloRegistro, item.realizado && { textDecorationLine: 'line-through', color: '#999' }]}>
+                  {item.nome_personalizado || 'Atividade'}
+                </Text>
+                {item.horario_inicio ? (
+                  <Text style={estilos.dataRegistro}>
+                    {formatarHorarioParaExibicao(item.horario_inicio)}
+                    {item.duracao_minutos ? ` · ${item.duracao_minutos} min` : ''}
+                  </Text>
+                ) : item.duracao_minutos ? (
+                  <Text style={estilos.dataRegistro}>{item.duracao_minutos} min</Text>
+                ) : null}
+              </View>
 
-          <View style={estilos.rodapeRotina}>
-            <TouchableOpacity style={estilos.btnSalvarRotina}>
-              <Ionicons name="checkmark" size={18} color="#FFF" />
-              <Text style={estilos.txtBtnSalvar}>Salvar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+              <TouchableOpacity onPress={() => alternarRealizado(item)} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
+                <Ionicons 
+                  name={item.realizado ? "checkmark-circle" : "ellipse-outline"} 
+                  size={28} 
+                  color={item.realizado ? "#4CAF50" : "#8C77C2"} 
+                />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          !carregando && <Text style={estilos.textoVazio}>Nenhuma atividade cadastrada na rotina.</Text>
+        }
+      />
 
       <MenuLateral
         visivel={menuVisivel}
@@ -283,101 +366,237 @@ export default function TelaCriarRotina({ route, navigation }) {
         perfil={perfil}
       />
 
-      {/* Modal nova rotina */}
-      <Modal visible={modalNovaRotinaVisivel} transparent animationType="fade" onRequestClose={() => setModalNovaRotinaVisivel(false)}>
-        <TouchableOpacity style={estilos.modalOverlay} activeOpacity={1} onPress={() => setModalNovaRotinaVisivel(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={estilos.modalCentral}>
-              <View style={estilos.modalHeader}>
-                <Ionicons name="create-outline" size={18} color="#8C77C2" />
-                <Text style={estilos.modalTitulo}>Nova rotina</Text>
-                <TouchableOpacity onPress={() => setModalNovaRotinaVisivel(false)}>
-                  <Ionicons name="close" size={22} color="#BDBDBD" />
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={estilos.input}
-                placeholder="Nome da rotina"
-                placeholderTextColor="#BDBDBD"
-                value={nomeRotina}
-                onChangeText={setNomeRotina}
-              />
-              <TouchableOpacity style={estilos.btnSalvar} onPress={criarRotina} disabled={salvandoRotina}>
-                {salvandoRotina ? <ActivityIndicator color="#FFF" /> : <Text style={estilos.txtBtnSalvar}>Criar rotina</Text>}
+      <Modal visible={modalNovoVisivel} transparent animationType="slide" onRequestClose={encerrarFormulario}>
+        <View style={estilos.modalOverlay}>
+          <View style={estilos.modalContainer}>
+            <View style={estilos.modalHeader}>
+              <Ionicons name="add-circle-outline" size={20} color="#8C77C2" />
+              <Text style={estilos.modalTitulo}>Nova Atividade</Text>
+              <TouchableOpacity onPress={encerrarFormulario}>
+                <Ionicons name="close" size={24} color="#BDBDBD" />
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+
+            <Text style={estilos.labelInput}>Tipo de Atividade</Text>
+            <TouchableOpacity style={estilos.inputTemaDropdown} onPress={() => setDropdownTipoVisivel(true)}>
+              <Text style={estilos.textoDropdownSelecionado}>
+                {tipoCriacao === 'personalizada' ? 'Atividade Personalizada' : 'Atividade do Sistema'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#8C77C2" />
+            </TouchableOpacity>
+
+            {tipoCriacao === 'personalizada' ? (
+              <>
+                <TouchableOpacity style={estilos.botaoImagem} onPress={() => setDropdownImagemVisivel(true)}>
+                  {imagemAtividade ? (
+                    <Image source={{ uri: `data:image/jpeg;base64,${imagemAtividade}` }} style={estilos.imagemSelecionada} />
+                  ) : (
+                    <>
+                      <Ionicons name="image-outline" size={32} color="#FFF" />
+                      <Text style={estilos.textoBotaoImagem}>Selecionar Imagem</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TextInput
+                  style={estilos.inputTema}
+                  placeholder="Nome da atividade"
+                  placeholderTextColor="#BDBDBD"
+                  value={nomeAtividade}
+                  onChangeText={setNomeAtividade}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={estilos.labelInput}>Selecione do Sistema</Text>
+                <TouchableOpacity style={estilos.inputTemaDropdown} onPress={() => setDropdownSistemaVisivel(true)}>
+                  <Text style={estilos.textoDropdownSelecionado}>
+                    {atividadeSistemaSelecionada ? atividadeSistemaSelecionada.nome : 'Toque para escolher...'}
+                  </Text>
+                  <Ionicons name="list" size={20} color="#8C77C2" />
+                </TouchableOpacity>
+
+                {atividadeSistemaSelecionada?.imagem && (
+                  <View style={estilos.containerImagemDetalhe}>
+                    <Image source={{ uri: `data:image/jpeg;base64,${atividadeSistemaSelecionada.imagem}` }} style={estilos.imagemSelecionada} />
+                  </View>
+                )}
+              </>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <TextInput
+                style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
+                placeholder="Horário (Ex: 08:00)"
+                placeholderTextColor="#BDBDBD"
+                value={horarioInicio}
+                onChangeText={(t) => setHorarioInicio(mascararHorario(t))}
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
+                placeholder="Duração (min)"
+                placeholderTextColor="#BDBDBD"
+                value={duracaoMinutos}
+                onChangeText={setDuracaoMinutos}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <TouchableOpacity style={estilos.btnSalvar} onPress={salvarAtividade} disabled={salvando}>
+              {salvando ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                  <Text style={estilos.txtBtnSalvar}>Salvar atividade</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={dropdownTipoVisivel} transparent animationType="fade" onRequestClose={() => setDropdownTipoVisivel(false)}>
+        <TouchableOpacity style={estilos.modalCentralOverlay} activeOpacity={1} onPress={() => setDropdownTipoVisivel(false)}>
+          <View style={estilos.modalDropdown}>
+            <Text style={estilos.tituloDropdown}>Tipo de Atividade</Text>
+            
+            <TouchableOpacity style={estilos.opcaoDropdown} onPress={() => { setTipoCriacao('personalizada'); setDropdownTipoVisivel(false); }}>
+              <Ionicons name="create-outline" size={20} color="#8C77C2" />
+              <Text style={estilos.textoOpcaoDropdown}>Atividade Personalizada</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={estilos.opcaoDropdown} onPress={() => { setTipoCriacao('sistema'); setDropdownTipoVisivel(false); }}>
+              <Ionicons name="globe-outline" size={20} color="#8C77C2" />
+              <Text style={estilos.textoOpcaoDropdown}>Atividade do Sistema</Text>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* Modal nova atividade */}
-      <Modal visible={modalAtividadeVisivel} transparent animationType="slide" onRequestClose={() => setModalAtividadeVisivel(false)}>
-        <View style={estilos.modalSlideOverlay}>
-          <ScrollView style={estilos.modalSlideContainer} showsVerticalScrollIndicator={false}>
+      <Modal visible={dropdownSistemaVisivel} transparent animationType="fade" onRequestClose={() => setDropdownSistemaVisivel(false)}>
+        <TouchableOpacity style={estilos.modalCentralOverlay} activeOpacity={1} onPress={() => setDropdownSistemaVisivel(false)}>
+          <View style={[estilos.modalDropdown, { maxHeight: '60%' }]}>
+            <Text style={estilos.tituloDropdown}>Atividades Disponíveis</Text>
+            <ScrollView>
+              {atividadesSistema.map((item) => (
+                <TouchableOpacity 
+                  key={item.id_atividade || item.id} 
+                  style={estilos.opcaoDropdown} 
+                  onPress={() => { setAtividadeSistemaSelecionada(item); setDropdownSistemaVisivel(false); }}
+                >
+                  <Text style={estilos.textoOpcaoDropdown}>{item.nome}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={dropdownImagemVisivel} transparent animationType="fade" onRequestClose={() => setDropdownImagemVisivel(false)}>
+        <TouchableOpacity style={estilos.modalCentralOverlay} activeOpacity={1} onPress={() => setDropdownImagemVisivel(false)}>
+          <View style={estilos.modalDropdown}>
+            <Text style={estilos.tituloDropdown}>Escolher Imagem</Text>
+            
+            <TouchableOpacity style={estilos.opcaoDropdown} onPress={() => manipularImagem('galeria')}>
+              <Ionicons name="images-outline" size={20} color="#8C77C2" />
+              <Text style={estilos.textoOpcaoDropdown}>Abrir Galeria</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[estilos.opcaoDropdown, { borderBottomWidth: 0 }]} onPress={() => manipularImagem('camera')}>
+              <Ionicons name="camera-outline" size={20} color="#8C77C2" />
+              <Text style={estilos.textoOpcaoDropdown}>Tirar Foto</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={modalVisualizarVisivel} transparent animationType="fade" onRequestClose={() => setModalVisualizarVisivel(false)}>
+        <View style={estilos.modalCentralOverlay}>
+          <View style={estilos.modalCentral}>
             <View style={estilos.modalHeader}>
-              <Ionicons name="create-outline" size={18} color="#8C77C2" />
-              <Text style={estilos.modalTitulo}>Criando minha rotina</Text>
-              <TouchableOpacity onPress={() => setModalAtividadeVisivel(false)}>
+              <Ionicons name="list-outline" size={18} color="#8C77C2" />
+              <Text style={estilos.modalTitulo}>{editando ? 'Editar Atividade' : 'Detalhes'}</Text>
+              <TouchableOpacity onPress={() => setModalVisualizarVisivel(false)}>
                 <Ionicons name="close" size={22} color="#BDBDBD" />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={estilos.areaSelecionarImagem} onPress={selecionarImagem}>
-              {imagemAtividade ? (
-                <Image source={{ uri: `data:image/jpeg;base64,${imagemAtividade}` }} style={estilos.imagemPreview} />
-              ) : (
-                <View style={estilos.placeholderImagem}>
-                  <Ionicons name="image-outline" size={40} color="#8C77C2" />
-                  <Text style={{ color: '#8C77C2', fontSize: 12, marginTop: 6, fontFamily: 'REM_Medium' }}>Selecionar imagem</Text>
+            {editando ? (
+              <>
+                <TouchableOpacity style={estilos.botaoImagem} onPress={() => setDropdownImagemVisivel(true)}>
+                  {imagemAtividade ? (
+                    <Image source={{ uri: `data:image/jpeg;base64,${imagemAtividade}` }} style={estilos.imagemSelecionada} />
+                  ) : (
+                    <>
+                      <Ionicons name="image-outline" size={32} color="#FFF" />
+                      <Text style={estilos.textoBotaoImagem}>Selecionar Imagem</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TextInput
+                  style={estilos.inputTema}
+                  placeholder="Nome da atividade"
+                  placeholderTextColor="#BDBDBD"
+                  value={nomeAtividade}
+                  onChangeText={setNomeAtividade}
+                />
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                  <TextInput
+                    style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Horário (Ex: 08:00)"
+                    placeholderTextColor="#BDBDBD"
+                    value={horarioInicio}
+                    onChangeText={(t) => setHorarioInicio(mascararHorario(t))}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Duração (min)"
+                    placeholderTextColor="#BDBDBD"
+                    value={duracaoMinutos}
+                    onChangeText={setDuracaoMinutos}
+                    keyboardType="numeric"
+                  />
                 </View>
-              )}
-            </TouchableOpacity>
-
-            <TextInput
-              style={estilos.input}
-              placeholder="Nome da atividade"
-              placeholderTextColor="#BDBDBD"
-              value={nomeAtividade}
-              onChangeText={setNomeAtividade}
-            />
-
-            <TouchableOpacity style={estilos.inputRow}>
-              <Ionicons name="time-outline" size={18} color="#BDBDBD" />
-              <TextInput
-                style={[estilos.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
-                placeholder="Defina um horário de início"
-                placeholderTextColor="#BDBDBD"
-                value={horarioInicio}
-                onChangeText={setHorarioInicio}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={estilos.inputRow}>
-              <Ionicons name="timer-outline" size={18} color="#BDBDBD" />
-              <TextInput
-                style={[estilos.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
-                placeholder="Defina uma duração"
-                placeholderTextColor="#BDBDBD"
-                value={duracao}
-                onChangeText={setDuracao}
-                keyboardType="numeric"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={estilos.checkboxRow} onPress={() => setPermitirStatus(!permitirStatus)}>
-              <Ionicons name={permitirStatus ? 'checkbox' : 'square-outline'} size={22} color="#8C77C2" />
-              <Text style={estilos.txtCheckbox}>Permitir status</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[estilos.btnSalvar, { marginTop: 10 }]} onPress={salvarAtividade} disabled={salvandoAtividade}>
-              {salvandoAtividade ? <ActivityIndicator color="#FFF" /> : (
-                <>
-                  <Ionicons name="checkmark" size={18} color="#FFF" />
-                  <Text style={estilos.txtBtnSalvar}>Salvar</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
+                <TouchableOpacity style={estilos.btnSalvar} onPress={salvarEdicao} disabled={salvando}>
+                  {salvando ? <ActivityIndicator color="#FFF" /> : <Text style={estilos.txtBtnSalvar}>Salvar</Text>}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {atividadeSelecionada?.imagem_personalizada && (
+                  <View style={estilos.containerImagemDetalhe}>
+                    <Image source={{ uri: `data:image/jpeg;base64,${atividadeSelecionada.imagem_personalizada}` }} style={estilos.imagemDetalheOriginal} />
+                  </View>
+                )}
+                <Text style={estilos.temaVisualizacao}>{atividadeSelecionada?.nome_personalizado || 'Atividade'}</Text>
+                {atividadeSelecionada?.horario_inicio ? (
+                  <Text style={estilos.descricaoVisualizacao}>
+                    Início: {formatarHorarioParaExibicao(atividadeSelecionada.horario_inicio)}
+                  </Text>
+                ) : null}
+                {atividadeSelecionada?.duracao_minutos ? (
+                  <Text style={estilos.descricaoVisualizacao}>
+                    Duração: {atividadeSelecionada.duracao_minutos} minutos
+                  </Text>
+                ) : null}
+                
+                <View style={[estilos.botoesVisualizacao, { marginTop: 15 }]}>
+                  <TouchableOpacity style={estilos.btnModificar} onPress={() => setEditando(true)}>
+                    <Ionicons name="pencil" size={16} color="#8C77C2" />
+                    <Text style={estilos.txtBtnModificar}>Editar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={estilos.btnExcluir} onPress={excluirAtividade}>
+                    <Ionicons name="trash-outline" size={16} color="#FFF" />
+                    <Text style={estilos.txtBtnExcluir}>Excluir</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -392,7 +611,6 @@ const estilosBase = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 10,
@@ -401,132 +619,89 @@ const estilosBase = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerDireita: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   tituloHeader: {
     fontSize: 22,
     fontFamily: 'REM_Bold',
     color: '#8C77C2',
     fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  subtitulo: {
+    fontSize: 16,
+    fontFamily: 'REM_Bold',
+    color: '#333',
   },
   iconeBotao: {
     padding: 5,
   },
-  containerSemRotina: {
-    flex: 1,
-    justifyContent: 'center',
+  barraAcoes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  iconesDireita: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  itemRegistroGrande: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#8C77C2',
+    overflow: 'hidden',
+    elevation: 2,
+  },
+  imagemCardGrande: {
+    width: '100%',
+    height: 180,
+    resizeMode: 'contain',
+    backgroundColor: '#F9F9F9',
+  },
+  conteudoCardGrande: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  infoRegistro: {
+    flex: 1,
+    marginRight: 10,
+  },
+  tituloRegistro: {
+    fontSize: 16,
+    fontFamily: 'REM_Bold',
+    color: '#333',
+    fontWeight: '700',
+  },
+  dataRegistro: {
+    fontSize: 13,
+    fontFamily: 'REM_Regular',
+    color: '#888',
+    marginTop: 4,
   },
   textoVazio: {
-    color: '#8C77C2',
-    fontFamily: 'REM_Medium',
-    fontSize: 15,
     textAlign: 'center',
-    opacity: 0.6,
-    paddingHorizontal: 40,
-  },
-  btnNovaRotina: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EDE0FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  itemRotina: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    elevation: 1,
-    marginBottom: 10,
-  },
-  txtRotina: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'REM_Medium',
-    color: '#333',
-  },
-  btnAdicionarAtividade: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  txtAdicionarAtividade: {
-    fontSize: 14,
-    fontFamily: 'REM_Medium',
-    color: '#8C77C2',
-  },
-  cardAtividade: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    elevation: 1,
-    marginBottom: 12,
-    position: 'relative',
-  },
-  btnFecharAtividade: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 1,
-  },
-  imagemAtividade: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-  },
-  infoAtividade: {
-    flex: 1,
-  },
-  nomeAtividade: {
-    fontSize: 14,
-    fontFamily: 'REM_Bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  horarioAtividade: {
-    fontSize: 14,
-    fontFamily: 'REM_Bold',
-    color: '#8C77C2',
-  },
-  duracaoAtividade: {
-    fontSize: 12,
-    fontFamily: 'REM_Regular',
     color: '#999',
-  },
-  rodapeRotina: {
-    position: 'absolute',
-    bottom: 90,
-    right: 20,
-  },
-  btnSalvarRotina: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#8C77C2',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    marginTop: 40,
+    fontFamily: 'REM_Regular',
   },
   modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    minHeight: '45%',
+  },
+  modalCentralOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
@@ -539,23 +714,38 @@ const estilosBase = StyleSheet.create({
     padding: 20,
     width: '100%',
   },
-  modalSlideOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalSlideContainer: {
+  modalDropdown: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 24,
-    maxHeight: '90%',
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    elevation: 5,
+  },
+  tituloDropdown: {
+    fontSize: 16,
+    fontFamily: 'REM_Bold',
+    color: '#8C77C2',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  opcaoDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  textoOpcaoDropdown: {
+    fontSize: 15,
+    fontFamily: 'REM_Regular',
+    color: '#333',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 15,
     gap: 8,
   },
   modalTitulo: {
@@ -565,7 +755,64 @@ const estilosBase = StyleSheet.create({
     color: '#8C77C2',
     marginLeft: 8,
   },
-  input: {
+  labelInput: {
+    fontSize: 13,
+    fontFamily: 'REM_Bold',
+    color: '#666',
+    marginBottom: 6,
+  },
+  inputTemaDropdown: {
+    backgroundColor: '#FAFAFC',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    marginBottom: 12,
+  },
+  textoDropdownSelecionado: {
+    fontSize: 14,
+    fontFamily: 'REM_Regular',
+    color: '#333',
+  },
+  botaoImagem: {
+    height: 120,
+    backgroundColor: '#FAFAFC',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    overflow: 'hidden',
+  },
+  textoBotaoImagem: {
+    color: '#8C77C2',
+    fontFamily: 'REM_Bold',
+    fontSize: 14,
+    marginTop: 6,
+  },
+  imagemSelecionada: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  containerImagemDetalhe: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: '#F9F9F9',
+    overflow: 'hidden',
+    marginBottom: 15,
+  },
+  imagemDetalheOriginal: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  inputTema: {
     backgroundColor: '#FAFAFC',
     borderRadius: 12,
     padding: 14,
@@ -576,47 +823,6 @@ const estilosBase = StyleSheet.create({
     borderColor: '#F0F0F0',
     marginBottom: 12,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFC',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    marginBottom: 12,
-    gap: 8,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  txtCheckbox: {
-    fontSize: 14,
-    fontFamily: 'REM_Medium',
-    color: '#555',
-  },
-  areaSelecionarImagem: {
-    width: '100%',
-    height: 160,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  imagemPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderImagem: {
-    flex: 1,
-    backgroundColor: '#F3EEFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   btnSalvar: {
     backgroundColor: '#8C77C2',
     borderRadius: 12,
@@ -625,11 +831,58 @@ const estilosBase = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 20,
   },
   txtBtnSalvar: {
     color: '#FFF',
     fontFamily: 'REM_Bold',
     fontSize: 15,
+  },
+  temaVisualizacao: {
+    fontSize: 16,
+    fontFamily: 'REM_Bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  descricaoVisualizacao: {
+    fontSize: 14,
+    fontFamily: 'REM_Regular',
+    color: '#555',
+    lineHeight: 22,
+  },
+  botoesVisualizacao: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  btnModificar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#8C77C2',
+    borderRadius: 12,
+    padding: 12,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  txtBtnModificar: {
+    color: '#8C77C2',
+    fontFamily: 'REM_Bold',
+    fontSize: 14,
+  },
+  btnExcluir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#8C77C2',
+    borderRadius: 12,
+    padding: 12,
+    flex: 1.5,
+    justifyContent: 'center',
+  },
+  txtBtnExcluir: {
+    color: '#FFF',
+    fontFamily: 'REM_Bold',
+    fontSize: 14,
   },
 });
