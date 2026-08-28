@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, TouchableOpacity,
   FlatList, Image, ActivityIndicator, ScrollView, Dimensions
@@ -37,7 +37,7 @@ export default function TelaComunicacao({ route, navigation }) {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
   const [itens, setItens] = useState([]);
   const [frase, setFrase] = useState([]);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [urlsPictogramas, setUrlsPictogramas] = useState({});
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export default function TelaComunicacao({ route, navigation }) {
   };
 
   const carregarCategorias = async () => {
-    setCarregando(true);
     try {
       const { data, error } = await supabase
         .from('comunicacao_categorias')
@@ -61,20 +60,22 @@ export default function TelaComunicacao({ route, navigation }) {
       if (error) throw error;
       const cats = data || [];
       setCategorias(cats);
+      setCarregando(false);
 
-   
-      const urls = {};
-      await Promise.all(cats.map(async (cat) => {
-        const url = await buscarPictograma(cat.nome);
-        if (url) urls[cat.id_categoria_comunicacao] = url;
-      }));
-      setUrlsPictogramas(prev => ({ ...prev, ...urls }));
-    } catch (e) { console.error(e); }
-    finally { setCarregando(false); }
+      cats.forEach((cat) => {
+        buscarPictograma(cat.nome).then((url) => {
+          if (url) {
+            setUrlsPictogramas(prev => ({ ...prev, [cat.id_categoria_comunicacao]: url }));
+          }
+        });
+      });
+    } catch (e) { 
+      console.error(e);
+      setCarregando(false);
+    }
   };
 
   const carregarItens = async (id_categoria) => {
-    setCarregando(true);
     try {
       const { data, error } = await supabase
         .from('comunicacao_itens')
@@ -84,17 +85,16 @@ export default function TelaComunicacao({ route, navigation }) {
       const lista = data || [];
       setItens(lista);
 
-   
-      const urls = {};
-      await Promise.all(lista.map(async (item) => {
+      lista.forEach((item) => {
         if (!urlsPictogramas[item.id_item_comunicacao]) {
-          const url = await buscarPictograma(item.palavra);
-          if (url) urls[item.id_item_comunicacao] = url;
+          buscarPictograma(item.palavra).then((url) => {
+            if (url) {
+              setUrlsPictogramas(prev => ({ ...prev, [item.id_item_comunicacao]: url }));
+            }
+          });
         }
-      }));
-      setUrlsPictogramas(prev => ({ ...prev, ...urls }));
+      });
     } catch (e) { console.error(e); }
-    finally { setCarregando(false); }
   };
 
   const selecionarCategoria = (categoria) => {
@@ -102,12 +102,17 @@ export default function TelaComunicacao({ route, navigation }) {
     carregarItens(categoria.id_categoria_comunicacao);
   };
 
+  const deselecionar = () => {
+    setCategoriaSelecionada(null);
+    setItens([]);
+  };
+
   const adicionarNaFrase = (item) => {
     setFrase(prev => [...prev, { ...item, url: urlsPictogramas[item.id_item_comunicacao] }]);
   };
 
   const removerDaFrase = (index) => {
-    setFrase(prev => prev.filter((_, i) => i !== index));
+    setFrase(prev => prev.filter((_, i) => i !== index)); 
   };
 
   const falarFrase = () => {
@@ -168,7 +173,7 @@ export default function TelaComunicacao({ route, navigation }) {
       <View style={estilos.headerContainer}>
         <View style={estilos.headerEsquerda}>
           <TouchableOpacity
-            onPress={() => categoriaSelecionada ? setCategoriaSelecionada(null) : navigation.goBack()}
+            onPress={() => categoriaSelecionada ? deselecionar() : navigation.goBack()}
             style={estilos.iconeBotao}
           >
             <Ionicons name="arrow-back" size={24} color="#8C77C2" />
@@ -186,38 +191,46 @@ export default function TelaComunicacao({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {carregando ? (
-        <ActivityIndicator size="large" color="#8C77C2" style={{ marginTop: 50 }} />
-      ) : !categoriaSelecionada ? (
-        <FlatList
-          data={categorias}
-          keyExtractor={(item) => item.id_categoria_comunicacao.toString()}
-          numColumns={3}
-          contentContainerStyle={estilos.grade}
-          renderItem={renderCategoria}
-          ListEmptyComponent={
-            <Text style={estilos.textoVazio}>Nenhuma categoria disponível.</Text>
-          }
-        />
-      ) : (
-        <FlatList
-          data={itens}
-          keyExtractor={(item) => item.id_item_comunicacao.toString()}
-          numColumns={3}
-          contentContainerStyle={estilos.grade}
-          renderItem={renderItem}
-          ListEmptyComponent={
-            <Text style={estilos.textoVazio}>Nenhum item nesta categoria.</Text>
-          }
-        />
-      )}
+      <View style={estilos.conteudoPrincipal}>
+        {carregando && !categoriaSelecionada ? (
+          <View style={estilos.containerCarregando}>
+            <ActivityIndicator size="large" color="#8C77C2" />
+            <Text style={estilos.textoCarregando}>Carregando...</Text>
+          </View>
+        ) : !categoriaSelecionada ? (
+          <FlatList
+            data={categorias}
+            keyExtractor={(item) => item.id_categoria_comunicacao.toString()}
+            numColumns={3}
+            contentContainerStyle={estilos.grade}
+            renderItem={renderCategoria}
+            ListEmptyComponent={
+              <Text style={estilos.textoVazio}>Nenhuma categoria disponível.</Text>
+            }
+          />
+        ) : (
+          <FlatList
+            data={itens}
+            keyExtractor={(item) => item.id_item_comunicacao.toString()}
+            numColumns={3}
+            contentContainerStyle={estilos.grade}
+            renderItem={renderItem}
+            ListEmptyComponent={
+              <Text style={estilos.textoVazio}>Nenhum item nesta categoria.</Text>
+            }
+          />
+        )}
+      </View>
 
       <View style={estilos.barraFrase}>
         <View style={estilos.botoesAcao}>
           <TouchableOpacity style={estilos.btnAcao} onPress={limparFrase}>
             <Ionicons name="trash-outline" size={22} color="#666" />
           </TouchableOpacity>
-          <TouchableOpacity style={estilos.btnAcao} onPress={() => removerDaFrase(frase.length - 1)}>
+          <TouchableOpacity 
+            style={estilos.btnAcao} 
+            onPress={() => frase.length > 0 && removerDaFrase(frase.length - 1)}
+          >
             <Ionicons name="close" size={22} color="#666" />
           </TouchableOpacity>
         </View>
@@ -253,9 +266,6 @@ export default function TelaComunicacao({ route, navigation }) {
         <View style={estilos.botoesAcao}>
           <TouchableOpacity style={estilos.btnAcao} onPress={falarFrase}>
             <Ionicons name="volume-high-outline" size={22} color="#8C77C2" />
-          </TouchableOpacity>
-          <TouchableOpacity style={estilos.btnAcao}>
-            <Ionicons name="copy-outline" size={22} color="#666" />
           </TouchableOpacity>
         </View>
       </View>
@@ -313,6 +323,20 @@ const estilosBase = StyleSheet.create({
     color: '#8C77C2',
     fontFamily: 'REM_Medium',
   },
+  conteudoPrincipal: {
+    flex: 1,
+  },
+  containerCarregando: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  textoCarregando: {
+    fontSize: 14,
+    color: '#999',
+    fontFamily: 'REM_Regular',
+  },
   grade: {
     padding: 10,
   },
@@ -361,16 +385,17 @@ const estilosBase = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderRadius: 24,
+    marginHorizontal: 12,
+    marginBottom: 12,
     paddingVertical: 8,
     paddingHorizontal: 8,
     minHeight: 90,
-    elevation: 8,
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
   botoesAcao: {
     gap: 6,

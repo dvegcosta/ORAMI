@@ -79,6 +79,8 @@ export default function TelaRotinas({ route, navigation }) {
         .eq('id_usuario', id_usuario)
         .maybeSingle();
 
+      if (errRotina) throw errRotina;
+
       let rotinaAtualId = rotinaData?.id_rotina || null;
       const dataHoje = new Date().toISOString().split('T')[0];
 
@@ -90,22 +92,26 @@ export default function TelaRotinas({ route, navigation }) {
           .single();
         
         if (errNovaRotina) throw errNovaRotina;
-        rotinaAtualId = novaRotina.id_rotina;
+        rotinaAtualId = novaRotina?.id_rotina;
       } else if (rotinaData.ultima_atualizacao !== dataHoje) {
-        await supabase
+        const { error: errReset } = await supabase
           .from('atividades_rotina')
           .update({ realizado: false })
           .eq('id_rotina', rotinaAtualId);
 
-        await supabase
+        if (errReset) throw errReset;
+
+        const { error: errUpdate } = await supabase
           .from('rotinas')
           .update({ ultima_atualizacao: dataHoje })
           .eq('id_rotina', rotinaAtualId);
+
+        if (errUpdate) throw errUpdate;
       }
 
-      setIdRotina(rotinaAtualId);
-
       if (rotinaAtualId) {
+        setIdRotina(rotinaAtualId);
+
         const { data: dataAtividades, error: errAtividades } = await supabase
           .from('atividades_rotina')
           .select('*')
@@ -116,14 +122,23 @@ export default function TelaRotinas({ route, navigation }) {
         setAtividades(dataAtividades || []);
       }
     } catch (e) {
-      Alert.alert('Erro', 'Falha ao processar os dados da rotina.');
+      console.error('Erro ao carregar rotina:', e.message);
+      Alert.alert('Erro', `Falha ao carregar rotina: ${e.message}`);
     } finally {
       setCarregando(false);
     }
   };
 
-  const mascararHorario = (texto) => {
-    return texto.replace(/\D/g, '');
+  const formatarHorario = (texto) => {
+    const numeros = texto.replace(/\D/g, '');
+    
+    if (numeros.length <= 2) {
+      return numeros;
+    } else if (numeros.length <= 4) {
+      return `${numeros.slice(0, 2)}:${numeros.slice(2)}`;
+    } else {
+      return `${numeros.slice(0, 2)}:${numeros.slice(2, 4)}`;
+    }
   };
 
   const formatarHorarioParaBanco = (horario) => {
@@ -427,11 +442,17 @@ export default function TelaRotinas({ route, navigation }) {
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
               <TextInput
                 style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
-                placeholder="Horário (Ex: 08:00)"
+                placeholder="Horário (HH:MM)"
                 placeholderTextColor="#BDBDBD"
                 value={horarioInicio}
-                onChangeText={(t) => setHorarioInicio(mascararHorario(t))}
+                onChangeText={(t) => {
+                  const formatado = formatarHorario(t);
+                  if (formatado.length <= 5) {
+                    setHorarioInicio(formatado);
+                  }
+                }}
                 keyboardType="numeric"
+                maxLength={5}
               />
               <TextInput
                 style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
@@ -546,11 +567,17 @@ export default function TelaRotinas({ route, navigation }) {
                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
                   <TextInput
                     style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
-                    placeholder="Horário (Ex: 08:00)"
+                    placeholder="Horário (HH:MM)"
                     placeholderTextColor="#BDBDBD"
                     value={horarioInicio}
-                    onChangeText={(t) => setHorarioInicio(mascararHorario(t))}
+                    onChangeText={(t) => {
+                      const formatado = formatarHorario(t);
+                      if (formatado.length <= 5) {
+                        setHorarioInicio(formatado);
+                      }
+                    }}
                     keyboardType="numeric"
+                    maxLength={5}
                   />
                   <TextInput
                     style={[estilos.inputTema, { flex: 1, marginBottom: 0 }]}
