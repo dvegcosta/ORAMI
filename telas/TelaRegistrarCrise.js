@@ -30,7 +30,11 @@ export default function TelaRegistrarCrise({ route, navigation }) {
   const [modalNovoRegistro, setModalNovoRegistro] = useState(false);
   const [modalNovaPasta, setModalNovaPasta] = useState(false);
   const [modalVisualizar, setModalVisualizar] = useState(false);
+  const [modalFiltro, setModalFiltro] = useState(false);
   
+  const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
+  const [filtroIntensidade, setFiltroIntensidade] = useState('');
+
   const [editandoId, setEditandoId] = useState(null);
   const [dataCrise, setDataCrise] = useState('');
   const [mostrarPickerData, setMostrarPickerData] = useState(false);
@@ -49,14 +53,13 @@ export default function TelaRegistrarCrise({ route, navigation }) {
   const [nomePastaNova, setNomePastaNova] = useState('');
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
 
-  // Tratamento do botão de voltar físico do Android
   useEffect(() => {
     const backAction = () => {
       if (pastaAtual !== null) {
         setPastaAtual(null);
-        return true; // Impede o comportamento padrão (sair da tela)
+        return true; 
       }
-      return false; // Permite o comportamento padrão (voltar de tela)
+      return false; 
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
@@ -64,6 +67,8 @@ export default function TelaRegistrarCrise({ route, navigation }) {
   }, [pastaAtual]);
 
   useEffect(() => {
+    setRegistros([]);
+    setPastas([]);
     carregarPerfil();
     carregarDados();
   }, [id_usuario, pastaAtual]);
@@ -77,20 +82,27 @@ export default function TelaRegistrarCrise({ route, navigation }) {
 
   const carregarDados = async () => {
     setCarregando(true);
+    setRegistros([]);
     try {
-      // Só recarrega as pastas se estiver na raiz para otimizar
       if (pastaAtual === null) {
-        const { data: resPastas } = await supabase.from('pasta_reg_crise').select('*').eq('id_usuario', id_usuario);
+        const { data: resPastas } = await supabase
+          .from('pasta_reg_crise')
+          .select('*')
+          .eq('id_usuario', id_usuario);
         setPastas(resPastas || []);
       }
 
-      let queryReg = supabase.from('registros_crise').select('*').eq('id_usuario', id_usuario);
+      let queryReg = supabase
+        .from('registros_crise')
+        .select('*')
+        .eq('id_usuario', id_usuario);
+
       if (pastaAtual === null) {
         queryReg = queryReg.is('id_pasta', null);
       } else {
         queryReg = queryReg.eq('id_pasta', pastaAtual);
       }
-      
+
       const { data: resReg, error: errReg } = await queryReg.order('criado_em', { ascending: false });
       if (errReg) throw errReg;
       setRegistros(resReg || []);
@@ -123,9 +135,7 @@ export default function TelaRegistrarCrise({ route, navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
-              // Deleta os registros da pasta primeiro
-              await supabase.from('registros_crise').delete().eq('id_pasta', pastaAtual);
-              // Deleta a pasta
+              await supabase.from('registros_crise').delete().eq('id_pasta', pastaAtual);        
               const { error } = await supabase.from('pasta_reg_crise').delete().eq('id_pasta', pastaAtual);
               if (error) throw error;
               setPastaAtual(null);
@@ -137,9 +147,7 @@ export default function TelaRegistrarCrise({ route, navigation }) {
           text: "Apenas a pasta (manter registros)", 
           onPress: async () => {
             try {
-              // Libera os registros para a raiz (null)
               await supabase.from('registros_crise').update({ id_pasta: null }).eq('id_pasta', pastaAtual);
-              // Deleta a pasta
               const { error } = await supabase.from('pasta_reg_crise').delete().eq('id_pasta', pastaAtual);
               if (error) throw error;
               setPastaAtual(null);
@@ -214,14 +222,14 @@ export default function TelaRegistrarCrise({ route, navigation }) {
         data_crise: dataBanco || new Date().toISOString().split('T')[0],
         horario_inicio: horarioInicio ? (horarioInicio.length === 5 ? `${horarioInicio}:00` : horarioInicio) : null,
         duracao_aproximada: duracao ? parseInt(duracao, 10) : null,
-        local: local || null,
-        possivel_gatilho: gatilho || null,
-        comportamentos_observados: comportamentos || null,
-        intensidade: intensidade || null,
-        estrategias_utilizadas: estrategias || null,
-        resultado: resultado || null,
-        estado_apos_crise: estadoApos || null,
-        observacoes: observacoes || null,
+        local: local.trim() || null,
+        possivel_gatilho: gatilho.trim() || null,
+        comportamentos_observados: comportamentos.trim() || null,
+        intensidade: intensidade.trim() || null,
+        estrategias_utilizadas: estrategias.trim() || null,
+        resultado: resultado.trim() || null,
+        estado_apos_crise: estadoApos.trim() || null,
+        observacoes: observacoes.trim() || null,
       };
 
       if (editandoId) {
@@ -260,14 +268,14 @@ export default function TelaRegistrarCrise({ route, navigation }) {
     setDataCrise(dataForm);
     setHorarioInicio(item.horario_inicio ? item.horario_inicio.substring(0, 5) : '');
     setDuracao(item.duracao_aproximada !== null ? item.duracao_aproximada.toString() : '');
-    setLocal(item.local || '');
-    setGatilho(item.possivel_gatilho || '');
-    setComportamentos(item.comportamentos_observados || '');
-    setIntensidade(item.intensidade || '');
-    setEstrategias(item.estrategias_utilizadas || '');
-    setResultado(item.resultado || '');
-    setEstadoApos(item.estado_apos_crise || '');
-    setObservacoes(item.observacoes || '');
+    setLocal(item.local ? item.local.trim() : '');
+    setGatilho(item.possivel_gatilho ? item.possivel_gatilho.trim() : '');
+    setComportamentos(item.comportamentos_observados ? item.comportamentos_observados.trim() : '');
+    setIntensidade(item.intensidade ? item.intensidade.trim() : '');
+    setEstrategias(item.estrategias_utilizadas ? item.estrategias_utilizadas.trim() : '');
+    setResultado(item.resultado ? item.resultado.trim() : '');
+    setEstadoApos(item.estado_apos_crise ? item.estado_apos_crise.trim() : '');
+    setObservacoes(item.observacoes ? item.observacoes.trim() : '');
     setPastaSelecionadaId(item.id_pasta || null);
     setModalVisualizar(false);
     setModalNovoRegistro(true);
@@ -308,14 +316,14 @@ export default function TelaRegistrarCrise({ route, navigation }) {
             <div class="section"><div class="label">Data</div><div class="value">${item.data_crise ? item.data_crise.split('-').reverse().join('/') : '-'}</div></div>
             <div class="section"><div class="label">Horário de Início</div><div class="value">${item.horario_inicio ? item.horario_inicio.substring(0, 5) : '-'}</div></div>
             <div class="section"><div class="label">Duração Aproximada (min)</div><div class="value">${item.duracao_aproximada !== null ? item.duracao_aproximada : '-'}</div></div>
-            <div class="section"><div class="label">Local</div><div class="value">${item.local || '-'}</div></div>
-            <div class="section"><div class="label">Possível Gatilho</div><div class="value">${item.possivel_gatilho || '-'}</div></div>
-            <div class="section"><div class="label">Comportamentos Observados</div><div class="value">${item.comportamentos_observados || '-'}</div></div>
-            <div class="section"><div class="label">Intensidade da Crise</div><div class="value">${item.intensidade || '-'}</div></div>
-            <div class="section"><div class="label">Estratégias Utilizadas</div><div class="value">${item.estrategias_utilizadas || '-'}</div></div>
-            <div class="section"><div class="label">Resultado</div><div class="value">${item.resultado || '-'}</div></div>
-            <div class="section"><div class="label">Estado Após a Crise</div><div class="value">${item.estado_apos_crise || '-'}</div></div>
-            <div class="section"><div class="label">Observações Adicionais</div><div class="value">${item.observacoes || '-'}</div></div>
+            <div class="section"><div class="label">Local</div><div class="value">${item.local ? item.local.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Possível Gatilho</div><div class="value">${item.possivel_gatilho ? item.possivel_gatilho.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Comportamentos Observados</div><div class="value">${item.comportamentos_observados ? item.comportamentos_observados.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Intensidade da Crise</div><div class="value">${item.intensidade ? item.intensidade.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Estratégias Utilizadas</div><div class="value">${item.estrategias_utilizadas ? item.estrategias_utilizadas.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Resultado</div><div class="value">${item.resultado ? item.resultado.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Estado Após a Crise</div><div class="value">${item.estado_apos_crise ? item.estado_apos_crise.trim() : '-'}</div></div>
+            <div class="section"><div class="label">Observações Adicionais</div><div class="value">${item.observacoes ? item.observacoes.trim() : '-'}</div></div>
           </body>
         </html>
       `;
@@ -324,9 +332,43 @@ export default function TelaRegistrarCrise({ route, navigation }) {
     } catch (e) { console.error(e); }
   };
 
-  const dadosLista = pastaAtual === null 
-    ? [...pastas.map(p => ({ ...p, tipo: 'pasta' })), ...registros.map(r => ({ ...r, tipo: 'registro' }))]
-    : [...registros.map(r => ({ ...r, tipo: 'registro' }))];
+  const registrosFiltrados = registros.filter(r => {
+    if (filtroIntensidade.trim() !== '') {
+      const intensidadeReg = r.intensidade ? r.intensidade.trim().toLowerCase() : '';
+      if (!intensidadeReg.includes(filtroIntensidade.trim().toLowerCase())) {
+        return false;
+      }
+    }
+
+    if (filtroPeriodo !== 'todos' && r.data_crise) {
+      const dataReg = new Date(r.data_crise + 'T00:00:00');
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      if (filtroPeriodo === 'hoje') {
+        if (dataReg.getTime() !== hoje.getTime()) return false;
+      } else if (filtroPeriodo === '7dias') {
+        const limite = new Date();
+        limite.setDate(limite.getDate() - 7);
+        if (dataReg < limite) return false;
+      } else if (filtroPeriodo === '30dias') {
+        const limite = new Date();
+        limite.setDate(limite.getDate() - 30);
+        if (dataReg < limite) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const dadosLista = pastaAtual === null
+    ? [
+        ...pastas.map(p => ({ ...p, tipo: 'pasta' })),
+        ...registrosFiltrados.map(r => ({ ...r, tipo: 'registro' }))
+      ]
+    : registrosFiltrados.map(r => ({ ...r, tipo: 'registro' }));
+
+  const temFiltroAtivo = filtroPeriodo !== 'todos' || filtroIntensidade.trim() !== '';
 
   return (
     <SafeAreaView style={estilos.telaPrincipal}>
@@ -338,7 +380,6 @@ export default function TelaRegistrarCrise({ route, navigation }) {
           <Text style={estilos.tituloHeader}>{pastaAtual === null ? 'Registrar crises' : 'Registros da pasta'}</Text>
         </View>
         
-        {/* Botão de apagar pasta se estiver dentro de uma */}
         {pastaAtual !== null && (
           <TouchableOpacity onPress={excluirPastaAtual} style={estilos.iconeBotao}>
             <Ionicons name="trash-outline" size={22} color="#E53935" />
@@ -352,9 +393,14 @@ export default function TelaRegistrarCrise({ route, navigation }) {
         contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
           <View style={estilos.barraAcoes}>
-            <TouchableOpacity style={estilos.btnFiltrar}>
-              <Ionicons name="filter" size={14} color="#8C77C2" />
-              <Text style={estilos.txtFiltrar}>Filtrar</Text>
+            <TouchableOpacity 
+              style={[estilos.btnFiltrar, temFiltroAtivo && { backgroundColor: '#8C77C2' }]} 
+              onPress={() => setModalFiltro(true)}
+            >
+              <Ionicons name="filter" size={14} color={temFiltroAtivo ? '#FFF' : '#8C77C2'} />
+              <Text style={[estilos.txtFiltrar, temFiltroAtivo && { color: '#FFF' }]}>
+                {temFiltroAtivo ? 'Filtrado' : 'Filtrar'}
+              </Text>
             </TouchableOpacity>
             <View style={estilos.iconesDireita}>
               {pastaAtual === null && (
@@ -384,12 +430,13 @@ export default function TelaRegistrarCrise({ route, navigation }) {
 
           const horarioFormatado = item.horario_inicio ? item.horario_inicio.substring(0, 5) : '';
           const dataFormatada = item.data_crise ? item.data_crise.split('-').reverse().join('/') : '';
+          const intensidadeLimpa = item.intensidade ? item.intensidade.trim() : '';
 
           return (
             <TouchableOpacity style={estilos.itemRegistro} activeOpacity={0.7} onPress={() => { setRegistroSelecionado(item); setModalVisualizar(true); }}>
               <Ionicons name="document-text-outline" size={20} color="#8C77C2" />
               <View style={estilos.infoRegistro}>
-                <Text style={estilos.tituloRegistro}>Registro de Crise</Text>
+                <Text style={estilos.tituloRegistro}>Registro de Crise {intensidadeLimpa ? `(${intensidadeLimpa})` : ''}</Text>
                 <Text style={estilos.dataRegistro}>{dataFormatada}{horarioFormatado ? ` · ${horarioFormatado}` : ''}</Text>
               </View>
               <Ionicons name="ellipsis-vertical" size={18} color="#BDBDBD" />
@@ -398,6 +445,66 @@ export default function TelaRegistrarCrise({ route, navigation }) {
         }}
         ListEmptyComponent={!carregando && <Text style={estilos.textoVazio}>Nenhum registro encontrado.</Text>}
       />
+
+      <Modal visible={modalFiltro} transparent animationType="fade" onRequestClose={() => setModalFiltro(false)}>
+        <View style={estilos.modalOverlay}>
+          <View style={estilos.modalCentral}>
+            <View style={estilos.modalHeader}>
+              <Ionicons name="filter" size={20} color="#8C77C2" />
+              <Text style={estilos.modalTitulo}>Filtrar Registros</Text>
+              <TouchableOpacity onPress={() => setModalFiltro(false)}>
+                <Ionicons name="close" size={22} color="#BDBDBD" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={estilos.labelInput}>Período:</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {[
+                { id: 'todos', label: 'Todos' },
+                { id: 'hoje', label: 'Hoje' },
+                { id: '7dias', label: 'Últimos 7 dias' },
+                { id: '30dias', label: 'Últimos 30 dias' },
+              ].map((p) => (
+                <TouchableOpacity 
+                  key={p.id}
+                  style={filtroPeriodo === p.id ? estilos.chipSelecionado : estilos.chipPasta}
+                  onPress={() => setFiltroPeriodo(p.id)}
+                >
+                  <Text style={filtroPeriodo === p.id ? estilos.textoChipSelecionado : estilos.textoChip}>{p.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={estilos.labelInput}>Filtrar por Intensidade:</Text>
+            <TextInput 
+              style={estilos.input} 
+              placeholder="Ex: Leve, Moderada, Forte..." 
+              placeholderTextColor="#BDBDBD" 
+              value={filtroIntensidade} 
+              onChangeText={setFiltroIntensidade} 
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <TouchableOpacity 
+                style={[estilos.btnSalvar, { flex: 1, backgroundColor: '#E0E0E0', marginTop: 0 }]} 
+                onPress={() => {
+                  setFiltroPeriodo('todos');
+                  setFiltroIntensidade('');
+                }}
+              >
+                <Text style={[estilos.txtBtnSalvar, { color: '#555' }]}>Limpar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[estilos.btnSalvar, { flex: 1, marginTop: 0 }]} 
+                onPress={() => setModalFiltro(false)}
+              >
+                <Text style={estilos.txtBtnSalvar}>Aplicar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={modalNovaPasta} transparent animationType="fade" onRequestClose={() => setModalNovaPasta(false)}>
         <View style={estilos.modalOverlay}>
@@ -507,14 +614,14 @@ export default function TelaRegistrarCrise({ route, navigation }) {
               <Text style={estilos.detalheTexto}>Data: {registroSelecionado?.data_crise ? registroSelecionado.data_crise.split('-').reverse().join('/') : '-'}</Text>
               <Text style={estilos.detalheTexto}>Horário de início: {registroSelecionado && registroSelecionado.horario_inicio ? registroSelecionado.horario_inicio.substring(0, 5) : '-'}</Text>
               <Text style={estilos.detalheTexto}>Duração aproximada: {registroSelecionado && registroSelecionado.duracao_aproximada != null ? `${registroSelecionado.duracao_aproximada} minutos` : '-'}</Text>
-              <Text style={estilos.detalheTexto}>Local: {registroSelecionado?.local || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Possível gatilho: {registroSelecionado?.possivel_gatilho || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Comportamentos observados: {registroSelecionado?.comportamentos_observados || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Intensidade da crise: {registroSelecionado?.intensidade || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Estratégias utilizadas: {registroSelecionado?.estrategias_utilizadas || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Resultado: {registroSelecionado?.resultado || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Estado após a crise: {registroSelecionado?.estado_apos_crise || '-'}</Text>
-              <Text style={estilos.detalheTexto}>Observações adicionais: {registroSelecionado?.observacoes || '-'}</Text>
+              <Text style={estilos.detalheTexto}>Local: {registroSelecionado?.local ? registroSelecionado.local.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Possível gatilho: {registroSelecionado?.possivel_gatilho ? registroSelecionado.possivel_gatilho.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Comportamentos observados: {registroSelecionado?.comportamentos_observados ? registroSelecionado.comportamentos_observados.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Intensidade da crise: {registroSelecionado?.intensidade ? registroSelecionado.intensidade.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Estratégias utilizadas: {registroSelecionado?.estrategias_utilizadas ? registroSelecionado.estrategias_utilizadas.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Resultado: {registroSelecionado?.resultado ? registroSelecionado.resultado.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Estado após a crise: {registroSelecionado?.estado_apos_crise ? registroSelecionado.estado_apos_crise.trim() : '-'}</Text>
+              <Text style={estilos.detalheTexto}>Observações adicionais: {registroSelecionado?.observacoes ? registroSelecionado.observacoes.trim() : '-'}</Text>
 
               <TouchableOpacity style={estilos.btnExportar} onPress={() => exportarPDF(registroSelecionado)}>
                 <Ionicons name="download-outline" size={18} color="#FFF" />
@@ -542,50 +649,275 @@ export default function TelaRegistrarCrise({ route, navigation }) {
 }
 
 const estilosBase = StyleSheet.create({
-  telaPrincipal: { flex: 1, backgroundColor: '#FAFAFC' },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 10 },
-  headerEsquerda: { flexDirection: 'row', alignItems: 'center' },
-  tituloHeader: { fontSize: 22, fontFamily: 'REM_Bold', color: '#8C77C2', marginLeft: 10, fontWeight: 'bold' },
-  iconeBotao: { padding: 5 },
-  barraAcoes: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 20 },
-  btnFiltrar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EDE0FF', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, gap: 6 },
-  txtFiltrar: { fontSize: 13, color: '#8C77C2', fontFamily: 'REM_Medium' },
-  iconesDireita: { flexDirection: 'row', gap: 12 },
-  itemRegistro: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, marginBottom: 10, borderRadius: 12, padding: 14, gap: 12, borderWidth: 1, borderColor: '#F0F0F0', elevation: 1 },
-  infoRegistro: { flex: 1 },
-  tituloRegistro: { fontSize: 14, fontFamily: 'REM_Bold', color: '#333', fontWeight: '600' },
-  dataRegistro: { fontSize: 12, fontFamily: 'REM_Regular', color: '#999', marginTop: 2 },
-  textoVazio: { textAlign: 'center', color: '#999', marginTop: 40, fontFamily: 'REM_Regular' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCentral: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, width: '100%' },
-  modalContainerGrande: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, width: '100%', maxHeight: '85%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 },
-  modalTitulo: { flex: 1, fontSize: 16, fontFamily: 'REM_Bold', color: '#8C77C2', marginLeft: 8 },
-  
-  labelInput: { fontSize: 14, fontFamily: 'REM_Bold', color: '#555', marginBottom: 8, marginTop: 4 },
-  scrollPastas: { flexDirection: 'row', marginBottom: 16 },
-  chipPasta: { backgroundColor: '#F0F0F0', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#E0E0E0' },
-  chipSelecionado: { backgroundColor: '#8C77C2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#8C77C2' },
-  textoChip: { color: '#555', fontFamily: 'REM_Regular', fontSize: 13 },
-  textoChipSelecionado: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 13 },
-
-  inputComIcone: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FAFAFC', borderRadius: 12, borderWidth: 1, borderColor: '#F0F0F0', marginBottom: 12 },
-  inputFlex: { flex: 1, padding: 14, fontSize: 14, fontFamily: 'REM_Regular', color: '#333' },
-  iconeInput: { padding: 12 },
-  input: { backgroundColor: '#FAFAFC', borderRadius: 12, padding: 14, fontSize: 14, fontFamily: 'REM_Regular', color: '#333', borderWidth: 1, borderColor: '#F0F0F0', marginBottom: 12 },
-  
-  btnSalvar: { backgroundColor: '#8C77C2', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 10 },
-  txtBtnSalvar: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 15 },
-  detalheTituloPrincipal: { fontSize: 18, fontFamily: 'REM_Bold', color: '#333', marginBottom: 12 },
-  detalheTexto: { fontSize: 14, fontFamily: 'REM_Regular', color: '#555', marginBottom: 8, lineHeight: 20 },
-  
-  btnExportar: { flexDirection: 'row', backgroundColor: '#4CAF50', borderRadius: 12, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
-  txtBtnExportar: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 15 },
-
-  botoesVisualizacao: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 12 },
-  btnModificar: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#8C77C2', borderRadius: 12, padding: 12, flex: 1, justifyContent: 'center' },
-  txtBtnModificar: { color: '#8C77C2', fontFamily: 'REM_Bold', fontSize: 14 },
-  btnExcluir: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#E53935', borderRadius: 12, padding: 12, flex: 1, justifyContent: 'center' },
-  txtBtnExcluir: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 14 },
+  telaPrincipal: { 
+    flex: 1, 
+    backgroundColor: '#FAFAFC' 
+  },
+  textoVazio: { 
+    textAlign: 'center', 
+    color: '#999', 
+    marginTop: 40, 
+    fontFamily: 'REM_Regular' 
+  },
+  headerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 20, 
+    paddingTop: 55, 
+    paddingBottom: 10 
+  },
+  headerEsquerda: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  tituloHeader: { 
+    fontSize: 22, 
+    fontFamily: 'REM_Bold', 
+    color: '#8C77C2', 
+    marginLeft: 10, 
+    fontWeight: 'bold' 
+  },
+  iconeBotao: { 
+    padding: 5 
+  },
+  barraAcoes: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingVertical: 20 
+  },
+  btnFiltrar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#EDE0FF', 
+    paddingHorizontal: 14, 
+    paddingVertical: 7, 
+    borderRadius: 20, 
+    gap: 6 
+  },
+  txtFiltrar: { 
+    fontSize: 13, 
+    color: '#8C77C2', 
+    fontFamily: 'REM_Medium' 
+  },
+  iconesDireita: { 
+    flexDirection: 'row', 
+    gap: 12 
+  },
+  itemRegistro: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    marginHorizontal: 20, 
+    marginBottom: 10, 
+    borderRadius: 12, 
+    padding: 14, 
+    gap: 12, 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    elevation: 1 
+  },
+  infoRegistro: { 
+    flex: 1 
+  },
+  tituloRegistro: { 
+    fontSize: 14, 
+    fontFamily: 'REM_Bold', 
+    color: '#333', 
+    fontWeight: '600' 
+  },
+  dataRegistro: { 
+    fontSize: 12, 
+    fontFamily: 'REM_Regular', 
+    color: '#999', 
+    marginTop: 2 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  modalOverlayBottom: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', 
+    justifyContent: 'flex-end' 
+  },
+  modalCentral: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 20, 
+    padding: 20, 
+    width: '100%' 
+  },
+  modalContainerGrande: { 
+    backgroundColor: '#FFF', 
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30, 
+    padding: 24, 
+    width: '100%', 
+    maxHeight: '85%' 
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    marginBottom: 16, 
+    gap: 8 
+  },
+  modalTitulo: { 
+    flex: 1, 
+    fontSize: 16, 
+    fontFamily: 'REM_Bold', 
+    color: '#8C77C2', 
+    marginLeft: 8 
+  },
+  scrollPastas: { 
+    flexDirection: 'row', 
+    marginBottom: 16 
+  },
+  chipPasta: { 
+    backgroundColor: '#F0F0F0', 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 20, 
+    marginRight: 8, 
+    borderWidth: 1, 
+    borderColor: '#E0E0E0' 
+  },
+  chipSelecionado: { 
+    backgroundColor: '#8C77C2', 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 20, 
+    marginRight: 8, 
+    borderWidth: 1, 
+    borderColor: '#8C77C2' 
+  },
+  textoChip: { 
+    color: '#555', 
+    fontFamily: 'REM_Regular', 
+    fontSize: 13 
+  },
+  textoChipSelecionado: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 13 
+  },
+  labelInput: { 
+    fontSize: 14, 
+    fontFamily: 'REM_Bold', 
+    color: '#555', 
+    marginBottom: 8, 
+    marginTop: 4 
+  },
+  input: { 
+    backgroundColor: '#FAFAFC', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#333', 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    marginBottom: 12 
+  },
+  inputComIcone: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FAFAFC', 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    marginBottom: 12 
+  },
+  inputFlex: { 
+    flex: 1, 
+    padding: 14, 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#333' 
+  },
+  iconeInput: { 
+    padding: 12 
+  },
+  btnSalvar: { 
+    backgroundColor: '#8C77C2', 
+    borderRadius: 12, 
+    padding: 14, 
+    alignItems: 'center', 
+    marginTop: 10 
+  },
+  txtBtnSalvar: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 15 
+  },
+  btnExportar: { 
+    flexDirection: 'row', 
+    backgroundColor: '#4CAF50', 
+    borderRadius: 12, 
+    padding: 14, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8, 
+    marginTop: 16 
+  },
+  txtBtnExportar: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 15 
+  },
+  detalheTituloPrincipal: { 
+    fontSize: 18, 
+    fontFamily: 'REM_Bold', 
+    color: '#333', 
+    marginBottom: 12 
+  },
+  detalheTexto: { 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#555', 
+    marginBottom: 8, 
+    lineHeight: 20 
+  },
+  botoesVisualizacao: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    gap: 10, 
+    marginTop: 12 
+  },
+  btnModificar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    borderWidth: 1, 
+    borderColor: '#8C77C2', 
+    borderRadius: 12, 
+    padding: 12, 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  txtBtnModificar: { 
+    color: '#8C77C2', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 14 
+  },
+  btnExcluir: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    backgroundColor: '#E53935', 
+    borderRadius: 12, 
+    padding: 12, 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  txtBtnExcluir: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 14 
+  },
 });

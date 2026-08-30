@@ -270,7 +270,7 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         perfil={perfil}
       />
 
-      {/* Modal Novo Registro */}
+
       <Modal visible={modalNovoVisivel} transparent animationType="slide" onRequestClose={() => setModalNovoVisivel(false)}>
         <View style={estilos.modalOverlay}>
           <View style={estilos.modalContainer}>
@@ -343,7 +343,6 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Modal Visualizar Registro */}
       <Modal visible={modalVisualizarVisivel} transparent animationType="fade" onRequestClose={() => setModalVisualizarVisivel(false)}>
         <View style={estilos.modalCentralOverlay}>
           <View style={estilos.modalCentral}>
@@ -396,7 +395,6 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Modal Criar Pasta */}
       <Modal visible={modalPastaVisivel} transparent animationType="fade" onRequestClose={() => setModalPastaVisivel(false)}>
         <View style={estilos.modalCentralOverlay}>
           <View style={estilos.modalCentral}>
@@ -423,7 +421,6 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Modal Opções da Pasta */}
       <Modal visible={modalOpcoesPastaVisivel} transparent animationType="fade" onRequestClose={() => setModalOpcoesPastaVisivel(false)}>
         <View style={estilos.modalCentralOverlay}>
           <View style={estilos.modalCentral}>
@@ -469,51 +466,278 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
 }
 
 const estilosBase = StyleSheet.create({
-  telaPrincipal: { flex: 1, backgroundColor: '#FAFAFC' },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 55, paddingBottom: 10 },
-  headerEsquerda: { flexDirection: 'row', alignItems: 'center' },
-  tituloHeader: { fontSize: 22, fontFamily: 'REM_Bold', color: '#8C77C2', fontWeight: 'bold' },
-  iconeBotao: { padding: 5 },
-  barraAcoes: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 20 },
-  btnFiltrar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EDE0FF', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, gap: 6 },
-  txtFiltrar: { fontSize: 13, color: '#8C77C2', fontFamily: 'REM_Medium' },
-  iconesDireita: { flexDirection: 'row', gap: 12 },
-  itemRegistro: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, marginBottom: 10, borderRadius: 12, padding: 14, gap: 12, borderWidth: 1, borderColor: '#F0F0F0', elevation: 1 },
-  infoRegistro: { flex: 1 },
-  tituloRegistro: { fontSize: 14, fontFamily: 'REM_Bold', color: '#333', fontWeight: '600' },
-  dataRegistro: { fontSize: 12, fontFamily: 'REM_Regular', color: '#999', marginTop: 2 },
-  textoVazio: { textAlign: 'center', color: '#999', marginTop: 40, fontFamily: 'REM_Regular' },
-  
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, minHeight: '60%' },
-  modalCentralOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCentral: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, width: '100%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 8 },
-  modalTitulo: { flex: 1, fontSize: 16, fontFamily: 'REM_Bold', color: '#8C77C2', marginLeft: 8 },
-  
-  inputTema: { backgroundColor: '#FAFAFC', borderRadius: 12, padding: 14, fontSize: 14, fontFamily: 'REM_Regular', color: '#333', borderWidth: 1, borderColor: '#F0F0F0', marginBottom: 12 },
-  inputDescricao: { backgroundColor: '#FAFAFC', borderRadius: 12, padding: 14, fontSize: 14, fontFamily: 'REM_Regular', color: '#333', borderWidth: 1, borderColor: '#F0F0F0', minHeight: 150, textAlignVertical: 'top', marginBottom: 20 },
-  
-  // Estilos adicionados para as chips de pastas no modal
-  secaoPastaModal: { marginBottom: 16 },
-  labelPastaModal: { fontSize: 13, color: '#999', fontFamily: 'REM_Medium', marginBottom: 8 },
-  containerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chipPastaModal: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EDE0FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  chipPastaModalSelecionado: { backgroundColor: '#8C77C2' },
-  textoChipModal: { fontSize: 13, fontFamily: 'REM_Medium', color: '#8C77C2' },
-  textoChipModalSelecionado: { color: '#FFF' },
-
-  btnSalvar: { backgroundColor: '#8C77C2', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  txtBtnSalvar: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 15 },
-  temaVisualizacao: { fontSize: 16, fontFamily: 'REM_Bold', color: '#333', marginBottom: 10 },
-  descricaoVisualizacao: { fontSize: 14, fontFamily: 'REM_Regular', color: '#555', lineHeight: 22, marginBottom: 20 },
-  botoesVisualizacao: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  btnModificar: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#8C77C2', borderRadius: 12, padding: 12, flex: 1, justifyContent: 'center' },
-  txtBtnModificar: { color: '#8C77C2', fontFamily: 'REM_Bold', fontSize: 14 },
-  btnExcluir: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#8C77C2', borderRadius: 12, padding: 12, flex: 1.5, justifyContent: 'center' },
-  txtBtnExcluir: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 14 },
-  itemPasta: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, gap: 12, borderWidth: 1, borderColor: '#F0F0F0', elevation: 1, marginBottom: 10 },
-  txtPasta: { flex: 1, fontSize: 14, fontFamily: 'REM_Medium', color: '#333' },
-  btnOpcaoPasta: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
-  txtOpcaoPasta: { fontSize: 15, fontFamily: 'REM_Medium', color: '#333' },
+  telaPrincipal: { 
+    flex: 1, 
+    backgroundColor: '#FAFAFC' 
+  },
+  textoVazio: { 
+    textAlign: 'center', 
+    color: '#999', 
+    marginTop: 40, 
+    fontFamily: 'REM_Regular' 
+  },
+  headerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingTop: 55, 
+    paddingBottom: 10 
+  },
+  headerEsquerda: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  tituloHeader: { 
+    fontSize: 22, 
+    fontFamily: 'REM_Bold', 
+    color: '#8C77C2', 
+    fontWeight: 'bold' 
+  },
+  iconeBotao: { 
+    padding: 5 
+  },
+  barraAcoes: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingVertical: 20 
+  },
+  btnFiltrar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#EDE0FF', 
+    paddingHorizontal: 14, 
+    paddingVertical: 7, 
+    borderRadius: 20, 
+    gap: 6 
+  },
+  txtFiltrar: { 
+    fontSize: 13, 
+    color: '#8C77C2', 
+    fontFamily: 'REM_Medium' 
+  },
+  iconesDireita: { 
+    flexDirection: 'row', 
+    gap: 12 
+  },
+  itemRegistro: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    marginHorizontal: 20, 
+    marginBottom: 10, 
+    borderRadius: 12, 
+    padding: 14, 
+    gap: 12, 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    elevation: 1 
+  },
+  infoRegistro: { 
+    flex: 1 
+  },
+  tituloRegistro: { 
+    fontSize: 14, 
+    fontFamily: 'REM_Bold', 
+    color: '#333', 
+    fontWeight: '600' 
+  },
+  dataRegistro: { 
+    fontSize: 12, 
+    fontFamily: 'REM_Regular', 
+    color: '#999', 
+    marginTop: 2 
+  },
+  itemPasta: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 14, 
+    gap: 12, 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    elevation: 1, 
+    marginBottom: 10 
+  },
+  txtPasta: { 
+    flex: 1, 
+    fontSize: 14, 
+    fontFamily: 'REM_Medium', 
+    color: '#333' 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContainer: { 
+    backgroundColor: '#FFF', 
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30, 
+    padding: 24, 
+    minHeight: '60%' 
+  },
+  modalCentralOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingVertical: 40,
+    paddingHorizontal: 16
+  },
+  modalCentral: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 20, 
+    padding: 20, 
+    width: '100%',
+    maxHeight: '85%'
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    marginBottom: 20, 
+    gap: 8 
+  },
+  modalTitulo: { 
+    flex: 1, 
+    fontSize: 16, 
+    fontFamily: 'REM_Bold', 
+    color: '#8C77C2', 
+    marginLeft: 8 
+  },
+  inputTema: { 
+    backgroundColor: '#FAFAFC', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#333', 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    marginBottom: 12 
+  },
+  inputDescricao: { 
+    backgroundColor: '#FAFAFC', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#333', 
+    borderWidth: 1, 
+    borderColor: '#F0F0F0', 
+    minHeight: 150, 
+    textAlignVertical: 'top', 
+    marginBottom: 20 
+  },
+  secaoPastaModal: { 
+    marginBottom: 16 
+  },
+  labelPastaModal: { 
+    fontSize: 13, 
+    color: '#999', 
+    fontFamily: 'REM_Medium', 
+    marginBottom: 8 
+  },
+  containerChips: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 8 
+  },
+  chipPastaModal: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    backgroundColor: '#EDE0FF', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 20 
+  },
+  chipPastaModalSelecionado: { 
+    backgroundColor: '#8C77C2' 
+  },
+  textoChipModal: { 
+    fontSize: 13, 
+    fontFamily: 'REM_Medium', 
+    color: '#8C77C2' 
+  },
+  textoChipModalSelecionado: { 
+    color: '#FFF' 
+  },
+  btnOpcaoPasta: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    paddingVertical: 16 
+  },
+  txtOpcaoPasta: { 
+    fontSize: 15, 
+    fontFamily: 'REM_Medium', 
+    color: '#333' 
+  },
+  btnSalvar: { 
+    backgroundColor: '#8C77C2', 
+    borderRadius: 12, 
+    padding: 14, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8 
+  },
+  txtBtnSalvar: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 15 
+  },
+  temaVisualizacao: { 
+    fontSize: 16, 
+    fontFamily: 'REM_Bold', 
+    color: '#333', 
+    marginBottom: 10 
+  },
+  descricaoVisualizacao: { 
+    fontSize: 14, 
+    fontFamily: 'REM_Regular', 
+    color: '#555', 
+    lineHeight: 22, 
+    marginBottom: 20 
+  },
+  botoesVisualizacao: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    gap: 10 
+  },
+  btnModificar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    borderWidth: 1, 
+    borderColor: '#8C77C2', 
+    borderRadius: 12, 
+    padding: 12, 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  txtBtnModificar: { 
+    color: '#8C77C2', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 14 
+  },
+  btnExcluir: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    backgroundColor: '#8C77C2', 
+    borderRadius: 12, 
+    padding: 12, 
+    flex: 1.5, 
+    justifyContent: 'center' 
+  },
+  txtBtnExcluir: { 
+    color: '#FFF', 
+    fontFamily: 'REM_Bold', 
+    fontSize: 14 
+  },
 });
