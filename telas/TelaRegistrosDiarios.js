@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView,
-  TouchableOpacity, FlatList, Modal, TextInput, ActivityIndicator
+  TouchableOpacity, FlatList, Modal, TextInput, ActivityIndicator, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -35,6 +35,12 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
   const [pastaOpcoes, setPastaOpcoes] = useState(null);
   const [editandoNomePasta, setEditandoNomePasta] = useState(false);
   const [novoNomePasta, setNovoNomePasta] = useState('');
+  const [modalFiltroVisivel, setModalFiltroVisivel] = useState(false);
+  const [filtroOrdem, setFiltroOrdem] = useState('recente');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
+  const [filtroPasta, setFiltroPasta] = useState('todas');
+  const [filtroTexto, setFiltroTexto] = useState('');
+
 
   useEffect(() => {
     carregarPerfil();
@@ -189,6 +195,40 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
     } catch (e) { console.error(e); }
   };
 
+  const registrosFiltrados = registros
+  .filter(r => {
+    if (!filtroTexto.trim()) return true;
+    return r.tema?.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+           r.descricao?.toLowerCase().includes(filtroTexto.toLowerCase());
+  })
+  .filter(r => {
+    const data = new Date(r.criado_em);
+    const agora = new Date();
+    if (filtroPeriodo === 'hoje') {
+      return data.toDateString() === agora.toDateString();
+    }
+    if (filtroPeriodo === 'semana') {
+      const seteDias = new Date();
+      seteDias.setDate(agora.getDate() - 7);
+      return data >= seteDias;
+    }
+    if (filtroPeriodo === 'mes') {
+      const trintaDias = new Date();
+      trintaDias.setDate(agora.getDate() - 30);
+      return data >= trintaDias;
+    }
+    return true;
+  })
+  .sort((a, b) => {
+    if (filtroOrdem === 'recente') return new Date(b.criado_em) - new Date(a.criado_em);
+    if (filtroOrdem === 'antigo') return new Date(a.criado_em) - new Date(b.criado_em);
+    if (filtroOrdem === 'az') return (a.tema || '').localeCompare(b.tema || '');
+    if (filtroOrdem === 'za') return (b.tema || '').localeCompare(a.tema || '');
+    return 0;
+  });
+
+const filtrosAtivos = filtroOrdem !== 'recente' || filtroPeriodo !== 'todos' || filtroTexto.trim();
+
   return (
     <SafeAreaView style={estilos.telaPrincipal}>
       <View style={estilos.headerContainer}>
@@ -201,20 +241,23 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
         </View>
       </View>
 
-      <FlatList
-        data={pastaSelecionada 
-          ? registros.filter(r => r.id_pasta === pastaSelecionada.id_pasta)
-          : registros
-        }
+     <FlatList
+  data={pastaSelecionada 
+    ? registrosFiltrados.filter(r => r.id_pasta === pastaSelecionada.id_pasta)
+    : registrosFiltrados
+  }
         keyExtractor={(item) => item.id_registro_diario.toString()}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
           <>
             <View style={estilos.barraAcoes}>
-              <TouchableOpacity style={estilos.btnFiltrar}>
-                <Ionicons name="filter" size={14} color="#8C77C2" />
-                <Text style={estilos.txtFiltrar}>Filtrar</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+  style={[estilos.btnFiltrar, filtrosAtivos && { backgroundColor: '#8C77C2' }]}
+  onPress={() => setModalFiltroVisivel(!modalFiltroVisivel)}
+>
+  <Ionicons name="filter" size={14} color={filtrosAtivos ? '#FFF' : '#8C77C2'} />
+  <Text style={[estilos.txtFiltrar, filtrosAtivos && { color: '#FFF' }]}>Filtrar</Text>
+</TouchableOpacity>
 
               <View style={estilos.iconesDireita}>
                 <TouchableOpacity style={estilos.iconeBotao} onPress={() => setModalPastaVisivel(true)}>
@@ -461,6 +504,102 @@ export default function TelaRegistrosDiarios({ route, navigation }) {
           </View>
         </View>
       </Modal>
+
+<Modal visible={modalFiltroVisivel} transparent animationType="fade" onRequestClose={() => setModalFiltroVisivel(false)}>
+  <View style={estilos.modalCentralOverlay}>
+    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalFiltroVisivel(false)} />
+    <View style={estilos.modalCentral}>
+
+      <View style={estilos.filtroHeader}>
+        <Ionicons name="filter" size={20} color="#8C77C2" />
+        <Text style={estilos.filtroTitulo}>Filtrar Registros</Text>
+        <TouchableOpacity onPress={() => setModalFiltroVisivel(false)}>
+          <Ionicons name="close" size={22} color="#BDBDBD" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+        <Text style={estilos.tituloFiltro}>Período:</Text>
+        <View style={estilos.grupoFiltro}>
+          {[
+            { key: 'todos', label: 'Todos' },
+            { key: 'hoje', label: 'Hoje' },
+            { key: 'semana', label: 'Últimos 7 dias' },
+            { key: 'mes', label: 'Últimos 30 dias' },
+          ].map(op => (
+            <TouchableOpacity
+              key={op.key}
+              style={[estilos.opcaoFiltro, filtroPeriodo === op.key && estilos.opcaoFiltroAtiva]}
+              onPress={() => setFiltroPeriodo(op.key)}
+            >
+              <Text style={[estilos.txtOpcaoFiltro, filtroPeriodo === op.key && estilos.txtOpcaoFiltroAtiva]}>
+                {op.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={estilos.tituloFiltro}>Ordenar por:</Text>
+        <View style={estilos.grupoFiltro}>
+          {[
+            { key: 'recente', label: 'Mais recente' },
+            { key: 'antigo', label: 'Mais antigo' },
+            { key: 'az', label: 'A → Z' },
+            { key: 'za', label: 'Z → A' },
+          ].map(op => (
+            <TouchableOpacity
+              key={op.key}
+              style={[estilos.opcaoFiltro, filtroOrdem === op.key && estilos.opcaoFiltroAtiva]}
+              onPress={() => setFiltroOrdem(op.key)}
+            >
+              <Text style={[estilos.txtOpcaoFiltro, filtroOrdem === op.key && estilos.txtOpcaoFiltroAtiva]}>
+                {op.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={estilos.tituloFiltro}>Buscar por tema:</Text>
+        <View style={estilos.inputBusca}>
+          <Ionicons name="search-outline" size={16} color="#BDBDBD" />
+          <TextInput
+            style={estilos.inputBuscaTexto}
+            placeholder="Ex: família, trabalho..."
+            placeholderTextColor="#BDBDBD"
+            value={filtroTexto}
+            onChangeText={setFiltroTexto}
+          />
+          {filtroTexto ? (
+            <TouchableOpacity onPress={() => setFiltroTexto('')}>
+              <Ionicons name="close-circle" size={16} color="#BDBDBD" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </ScrollView>
+
+      <View style={estilos.botoesRodapeFiltro}>
+        <TouchableOpacity
+          style={estilos.btnLimpar}
+          onPress={() => {
+            setFiltroOrdem('recente');
+            setFiltroPeriodo('todos');
+            setFiltroTexto('');
+          }}
+        >
+          <Text style={estilos.txtBtnLimpar}>Limpar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={estilos.btnAplicar}
+          onPress={() => setModalFiltroVisivel(false)}
+        >
+          <Text style={estilos.txtBtnAplicar}>Aplicar</Text>
+        </TouchableOpacity>
+      </View>
+
+    </View>
+  </View>
+</Modal>
+
     </SafeAreaView>
   );
 }
@@ -579,21 +718,20 @@ const estilosBase = StyleSheet.create({
     padding: 24, 
     minHeight: '60%' 
   },
-  modalCentralOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    paddingVertical: 40,
-    paddingHorizontal: 16
-  },
-  modalCentral: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 20, 
-    padding: 20, 
-    width: '100%',
-    maxHeight: '85%'
-  },
+  modalCentralOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 16,
+},
+modalCentral: {
+  backgroundColor: '#FFF',
+  borderRadius: 20,
+  padding: 20,
+  width: '100%',
+  maxHeight: '80%',
+},
   modalHeader: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -740,4 +878,120 @@ const estilosBase = StyleSheet.create({
     fontFamily: 'REM_Bold', 
     fontSize: 14 
   },
+
+  inputRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#FAFAFC',
+  borderRadius: 12,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderWidth: 1,
+  borderColor: '#F0F0F0',
+  marginBottom: 16,
+  gap: 8,
+},
+inputInline: {
+  flex: 1,
+  fontSize: 14,
+  fontFamily: 'REM_Regular',
+  color: '#333',
+  paddingVertical: 10,
+},
+
+filtroHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+  marginBottom: 20,
+},
+filtroTitulo: {
+  flex: 1,
+  fontSize: 18,
+  fontFamily: 'REM_Bold',
+  color: '#8C77C2',
+  fontWeight: 'bold',
+},
+tituloFiltro: {
+  fontSize: 14,
+  fontFamily: 'REM_Bold',
+  color: '#333',
+  fontWeight: '700',
+  marginBottom: 10,
+},
+grupoFiltro: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginBottom: 16,
+},
+opcaoFiltro: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  backgroundColor: '#FAFAFC',
+},
+opcaoFiltroAtiva: {
+  backgroundColor: '#8C77C2',
+  borderColor: '#8C77C2',
+},
+txtOpcaoFiltro: {
+  fontSize: 13,
+  fontFamily: 'REM_Medium',
+  color: '#555',
+},
+txtOpcaoFiltroAtiva: {
+  color: '#FFF',
+  fontFamily: 'REM_Bold',
+},
+inputBusca: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#FAFAFC',
+  borderRadius: 12,
+  paddingHorizontal: 14,
+  paddingVertical: 4,
+  borderWidth: 1,
+  borderColor: '#F0F0F0',
+  marginBottom: 20,
+  gap: 8,
+},
+inputBuscaTexto: {
+  flex: 1,
+  fontSize: 14,
+  fontFamily: 'REM_Regular',
+  color: '#333',
+  paddingVertical: 10,
+},
+botoesRodapeFiltro: {
+  flexDirection: 'row',
+  gap: 12,
+},
+btnLimpar: {
+  flex: 1,
+  paddingVertical: 14,
+  borderRadius: 12,
+  backgroundColor: '#F0F0F0',
+  alignItems: 'center',
+},
+txtBtnLimpar: {
+  fontSize: 15,
+  fontFamily: 'REM_Bold',
+  color: '#555',
+},
+btnAplicar: {
+  flex: 1.5,
+  paddingVertical: 14,
+  borderRadius: 12,
+  backgroundColor: '#8C77C2',
+  alignItems: 'center',
+},
+txtBtnAplicar: {
+  fontSize: 15,
+  fontFamily: 'REM_Bold',
+  color: '#FFF',
+},
+
 });

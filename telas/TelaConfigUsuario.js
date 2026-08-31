@@ -18,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useEstilosTema } from '../lib/tema';
-import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, isStorageUrl } from '../lib/storage';
 import { Alert } from '../lib/popup';
 
 export default function TelaConfigUsuario({ route, navigation }) {
@@ -31,7 +30,6 @@ export default function TelaConfigUsuario({ route, navigation }) {
   const [username, setUsername] = useState('');
   const [sobreMim, setSobreMim] = useState('');
   const [fotoBase64, setFotoBase64] = useState(null);
-  const [fotoAnterior, setFotoAnterior] = useState(null);
   
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -64,7 +62,6 @@ export default function TelaConfigUsuario({ route, navigation }) {
           setSobreMim(data.sobre || '');
           if (data.foto_base64) {
             setFotoBase64(data.foto_base64);
-            setFotoAnterior(data.foto_base64);
           }
         }
       } catch (error) {
@@ -107,51 +104,24 @@ export default function TelaConfigUsuario({ route, navigation }) {
 
     setSalvando(true);
 
-    let novaFotoStorage = null;
     try {
-      let referenciaFoto = fotoBase64 || null;
-
-      // Fotos novas são enviadas ao Storage antes de persistir a referência no banco.
-      if (fotoBase64 && !isStorageUrl(fotoBase64)) {
-        const upload = await uploadImagemBase64({
-          bucket: BUCKETS.PERFIL,
-          pasta: idUsuarioEfetivo,
-          base64: fotoBase64,
-          mimeType: 'image/jpeg',
-          nomeBase: 'perfil',
-        });
-
-        referenciaFoto = upload.publicUrl;
-        novaFotoStorage = upload.publicUrl;
-      }
-
       const { data, error } = await supabase.rpc('atualizar_perfil_usuario', {
         p_id_usuario: idUsuarioEfetivo,
         p_nome: nome,
         p_username: username,
         p_sobre: sobreMim,
-        p_foto_base64: referenciaFoto,
+        p_foto_base64: fotoBase64 
       });
 
       if (error) throw error;
 
       if (data.success) {
-        // Só removemos a foto anterior depois que a nova referência foi salva com sucesso.
-        if (fotoAnterior && fotoAnterior !== referenciaFoto) {
-          await removerImagemStorage(fotoAnterior, BUCKETS.PERFIL);
-        }
-
-        setFotoAnterior(referenciaFoto);
-        setFotoBase64(referenciaFoto);
         navigation.replace('MenuNavegacao', { id_usuario: idUsuarioEfetivo });
       } else {
         Alert.alert('Perfil não atualizado', data.message);
       }
     } catch (error) {
       console.error(error);
-      if (novaFotoStorage) {
-        await removerImagemStorage(novaFotoStorage, BUCKETS.PERFIL);
-      }
       Alert.alert('Conexão indisponível', 'Não foi possível atualizar o perfil agora. Tente novamente em instantes.');
     } finally {
       setSalvando(false);
@@ -202,7 +172,7 @@ export default function TelaConfigUsuario({ route, navigation }) {
             <TouchableOpacity onPress={escolherFoto} activeOpacity={0.8} style={estilos.avatarContainer}>
               {fotoBase64 ? (
                 <Image 
-                  source={normalizarImagem(fotoBase64)} 
+                  source={{ uri: `data:image/jpeg;base64,${fotoBase64}` }} 
                   style={estilos.avatarImage} 
                 />
               ) : (

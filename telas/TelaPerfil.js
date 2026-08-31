@@ -7,7 +7,6 @@ import { Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import PostCard from '../lib/PostCard';
 import { useEstilosTema, usarTema } from '../lib/tema';
-import { normalizarImagem } from '../lib/storage';
 import { Platform } from 'react-native';
 import { Alert } from '../lib/popup';
 
@@ -282,15 +281,7 @@ export default function TelaPerfil({ route, navigation }) {
               <Text style={estilos.tituloHeader}>{perfil?.username_perfil}</Text>
             </View>
             <View style={estilos.rightIcons}>
-              <TouchableOpacity
-                style={estilos.btnChatNav}
-                onPress={() => navigation.navigate('TelaConversa', {
-                  id_usuario_logado: id_logado,
-                  id_usuario_destino: id_alvo,
-                })}
-                accessibilityRole="button"
-                accessibilityLabel="Enviar mensagem"
-              >
+              <TouchableOpacity style={estilos.btnChatNav}>
                 <Ionicons name="chatbubble-ellipses" size={28} color="#FFF" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setMenuAcoesPerfilVisivel(true)}>
@@ -304,7 +295,7 @@ export default function TelaPerfil({ route, navigation }) {
       <View style={estilos.profileInfoContainer}>
         <View style={estilos.rowSuperior}>
           {perfil?.foto_base64 ? (
-            <Image source={normalizarImagem(perfil.foto_base64)} style={estilos.avatarGrande} />
+            <Image source={{ uri: `data:image/jpeg;base64,${perfil.foto_base64}` }} style={estilos.avatarGrande} />
           ) : (
             <View style={[estilos.avatarGrande, { backgroundColor: '#C6DFFF' }]} />
           )}
@@ -427,7 +418,7 @@ export default function TelaPerfil({ route, navigation }) {
               >
                 <View style={estilos.linhaRoxaPerfil} />
                 {perfilMenu.fotoBase64 ? (
-                  <Image source={normalizarImagem(perfilMenu.fotoBase64)} style={estilos.fotoPerfilMenu} />
+                  <Image source={{ uri: `data:image/jpeg;base64,${perfilMenu.fotoBase64}` }} style={estilos.fotoPerfilMenu} />
                 ) : (
                   <View style={[estilos.fotoPerfilMenu, estilos.fotoPlaceholder]}>
                     <Ionicons name="person" size={30} color="#FFF" />
@@ -488,7 +479,7 @@ export default function TelaPerfil({ route, navigation }) {
                     onPress={() => { setModalAmigosVisivel(false); navigation.push('TelaPerfil', { id_usuario: id_logado, id_perfil: item.id_amigo }); }}
                   >
                     {item.foto_base64 ? (
-                      <Image source={normalizarImagem(item.foto_base64)} style={estilos.fotoAmigo} />
+                      <Image source={{ uri: `data:image/jpeg;base64,${item.foto_base64}` }} style={estilos.fotoAmigo} />
                     ) : (
                       <View style={[estilos.fotoAmigo, { backgroundColor: '#C6DFFF', justifyContent: 'center', alignItems: 'center' }]}>
                         <Ionicons name="person" size={20} color="#FFF" />

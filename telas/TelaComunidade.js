@@ -20,11 +20,8 @@ import { Platform } from 'react-native';
 
 const imagemUri = (valor) => {
   if (!valor) return null;
-  const texto = String(valor);
-  if (texto.startsWith('data:') || texto.startsWith('http://') || texto.startsWith('https://')) {
-    return { uri: texto };
-  }
-  return { uri: `data:image/jpeg;base64,${texto}` };
+  if (String(valor).startsWith('data:') || String(valor).startsWith('http')) return { uri: String(valor) };
+  return { uri: `data:image/jpeg;base64,${valor}` };
 };
 
 export default function TelaComunidade({ route, navigation }) {
@@ -41,8 +38,6 @@ export default function TelaComunidade({ route, navigation }) {
   const [modalTransferencia, setModalTransferencia] = useState(false);
   const [membrosTransferencia, setMembrosTransferencia] = useState([]);
   const [carregandoTransferencia, setCarregandoTransferencia] = useState(false);
-  const [regras, setRegras] = useState([]);
-  const [carregandoRegras, setCarregandoRegras] = useState(false);
 
   const ehModerador = papelUsuario === 'moderador' || papelUsuario === 'criador';
   const ehCriador = papelUsuario === 'criador';
@@ -63,25 +58,6 @@ export default function TelaComunidade({ route, navigation }) {
       .eq('status', 'ativo')
       .maybeSingle();
     if (!error) setPapelUsuario(data?.papel || null);
-  };
-
-  const carregarRegras = async () => {
-    if (!id_comunidade) return;
-    setCarregandoRegras(true);
-    try {
-      const { data, error } = await supabase
-        .from('regras')
-        .select('id_regra,id_comunidade,titulo,descricao,ordem,criado_em,atualizado_em')
-        .eq('id_comunidade', id_comunidade)
-        .order('ordem', { ascending: true });
-      if (error) throw error;
-      setRegras(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar regras da comunidade:', error);
-      setRegras([]);
-    } finally {
-      setCarregandoRegras(false);
-    }
   };
 
   const carregarTudo = async () => {
@@ -105,7 +81,7 @@ export default function TelaComunidade({ route, navigation }) {
 
       setComunidade(comunidadeResult.data?.[0] || null);
       setPosts(postsResult.data || []);
-      await Promise.all([carregarPapel(), carregarRegras()]);
+      await carregarPapel();
     } catch (error) {
       console.error('Erro ao carregar comunidade:', error);
       setComunidade(null);
@@ -338,9 +314,6 @@ export default function TelaComunidade({ route, navigation }) {
             idUsuario={id_usuario}
             onCurtir={handleCurtir}
             onSalvar={handleSalvar}
-            onOcultarSuccess={(id_post) => setPosts((anteriores) => anteriores.filter((post) => post.id_post !== id_post))}
-            idComunidade={id_comunidade}
-            ehModeradorNaComunidade={ehModerador}
             variant="comunidade"
           />
         )}
@@ -406,50 +379,6 @@ export default function TelaComunidade({ route, navigation }) {
                 </View>
               </View>
               <Text style={estilos.descComunidade}>{comunidade.descr_comunidade}</Text>
-            </View>
-
-            <View style={estilos.regrasContainer}>
-              <View style={estilos.regrasHeader}>
-                <View style={estilos.regrasTituloGrupo}>
-                  <View style={estilos.regrasIcone}>
-                    <Ionicons name="shield-checkmark-outline" size={20} color="#8C77C2" />
-                  </View>
-                  <View>
-                    <Text style={estilos.regrasTitulo}>Regras da comunidade</Text>
-                    <Text style={estilos.regrasSubtitulo}>Para manter este espaço seguro e acolhedor.</Text>
-                  </View>
-                </View>
-                {regras.length > 0 && (
-                  <View style={estilos.regrasContador}>
-                    <Text style={estilos.regrasContadorTexto}>{regras.length}</Text>
-                  </View>
-                )}
-              </View>
-
-              {carregandoRegras ? (
-                <View style={estilos.regrasEstado}>
-                  <ActivityIndicator size="small" color="#8C77C2" />
-                </View>
-              ) : regras.length > 0 ? (
-                <View style={estilos.listaRegras}>
-                  {regras.map((regra) => (
-                    <View key={String(regra.id_regra)} style={estilos.regraCard}>
-                      <View style={estilos.regraNumero}>
-                        <Text style={estilos.regraNumeroTexto}>{regra.ordem}</Text>
-                      </View>
-                      <View style={estilos.regraConteudo}>
-                        <Text style={estilos.regraTitulo}>{regra.titulo}</Text>
-                        <Text style={estilos.regraDescricao}>{regra.descricao}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={estilos.regrasVazio}>
-                  <Ionicons name="information-circle-outline" size={18} color="#9B93A4" />
-                  <Text style={estilos.regrasVazioTexto}>Esta comunidade ainda não possui regras cadastradas.</Text>
-                </View>
-              )}
             </View>
 
             <View style={estilos.containerMeio}>
@@ -558,24 +487,6 @@ const estilosBase = StyleSheet.create({
   btnJuntarSair: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#D3C6F5', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 20 },
   txtBtnJuntar: { color: '#8C77C2', fontFamily: 'REM_Bold', fontSize: 13 },
   descComunidade: { fontSize: 14, color: '#555', lineHeight: 20, marginTop: 15, fontFamily: 'REM_Regular', textAlign: 'justify' },
-  regrasContainer: { marginHorizontal: 20, marginTop: 4, marginBottom: 2, backgroundColor: '#FFF', borderRadius: 18, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-  regrasHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  regrasTituloGrupo: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },
-  regrasIcone: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0E6FF', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  regrasTitulo: { fontFamily: 'REM_Bold', fontSize: 15, color: '#25212B' },
-  regrasSubtitulo: { fontFamily: 'REM_Regular', fontSize: 11, color: '#8C8492', marginTop: 2 },
-  regrasContador: { minWidth: 28, height: 28, borderRadius: 14, backgroundColor: '#F0E6FF', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  regrasContadorTexto: { fontFamily: 'REM_Bold', fontSize: 12, color: '#8C77C2' },
-  regrasEstado: { height: 42, alignItems: 'center', justifyContent: 'center' },
-  listaRegras: { gap: 9 },
-  regraCard: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6 },
-  regraNumero: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#8C77C2', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 1 },
-  regraNumeroTexto: { color: '#FFF', fontFamily: 'REM_Bold', fontSize: 11 },
-  regraConteudo: { flex: 1, minWidth: 0 },
-  regraTitulo: { fontFamily: 'REM_Bold', fontSize: 13, color: '#302B37', marginBottom: 2 },
-  regraDescricao: { fontFamily: 'REM_Regular', fontSize: 12, color: '#6E6875', lineHeight: 18 },
-  regrasVazio: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  regrasVazioTexto: { flex: 1, fontFamily: 'REM_Regular', fontSize: 12, color: '#928A9B', lineHeight: 17 },
   containerMeio: { paddingHorizontal: 20, paddingTop: 17, paddingBottom: 15 },
   btnNovoPost: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
   txtBtnNovoPost: { color: '#8C77C2', fontFamily: 'REM_Bold', fontSize: 15, marginLeft: 5 },

@@ -21,7 +21,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { useEstilosTema, usarTema } from '../lib/tema';
-import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage } from '../lib/storage';
 import { Alert } from '../lib/popup';
 
 const {
@@ -179,7 +178,7 @@ export default function TelaPost({ route, navigation }) {
         data: comData,
         error: comError,
       } = await supabase.rpc(
-        'obter_comentarios_postagens',
+        'obter_comentarios_post',
         {
           p_id_post: id_post,
           p_id_usuario:
@@ -409,18 +408,6 @@ export default function TelaPost({ route, navigation }) {
       setEnviando(true);
 
       try {
-        let imagemEnviada = null;
-
-        if (imagemComentario) {
-          imagemEnviada = await uploadImagemBase64({
-            bucket: BUCKETS.POSTS,
-            pasta: `${id_usuario_logado}/comentarios`,
-            base64: imagemComentario,
-            mimeType: 'image/jpeg',
-            nomeBase: 'comentario',
-          });
-        }
-
         const {
           error,
         } = await supabase.rpc(
@@ -433,7 +420,7 @@ export default function TelaPost({ route, navigation }) {
             p_conteudo:
               novoComentario,
             p_imagem_base64:
-              imagemEnviada?.publicUrl || null,
+              imagemComentario,
             p_id_comentario_pai:
               isThread
                 ? idAtual
@@ -442,9 +429,6 @@ export default function TelaPost({ route, navigation }) {
         );
 
         if (error) {
-          if (imagemEnviada?.publicUrl) {
-            await removerImagemStorage(imagemEnviada.publicUrl, BUCKETS.POSTS);
-          }
           throw error;
         }
 
@@ -540,13 +524,6 @@ export default function TelaPost({ route, navigation }) {
 
                   if (error) {
                     throw error;
-                  }
-
-                  if (!isThread) {
-                    await removerImagemStorage(
-                      post?.imagem_base64,
-                      BUCKETS.POSTS
-                    );
                   }
 
                   navigation.goBack();
@@ -1049,7 +1026,13 @@ export default function TelaPost({ route, navigation }) {
             }}
           >
             <Image
-              source={item.autor_foto ? normalizarImagem(item.autor_foto) : avatarPadrao}
+              source={
+                item.autor_foto
+                  ? {
+                    uri: `data:image/jpeg;base64,${item.autor_foto}`,
+                  }
+                  : avatarPadrao
+              }
               style={
                 estilos.avatarComentario
               }
@@ -1120,7 +1103,7 @@ export default function TelaPost({ route, navigation }) {
             {item.imagem_base64 && (
               <Image
                 source={{
-                  uri: normalizarImagem(item.imagem_base64)?.uri,
+                  uri: `data:image/jpeg;base64,${item.imagem_base64}`,
                 }}
                 style={
                   estilos.imagemComentarioPost
@@ -1331,7 +1314,13 @@ export default function TelaPost({ route, navigation }) {
                   }
                 >
                   <Image
-                    source={post.autor_foto ? normalizarImagem(post.autor_foto) : avatarPadrao}
+                    source={
+                      post.autor_foto
+                        ? {
+                          uri: `data:image/jpeg;base64,${post.autor_foto}`,
+                        }
+                        : avatarPadrao
+                    }
                     style={
                       estilos.avatarPost
                     }
@@ -1551,7 +1540,7 @@ export default function TelaPost({ route, navigation }) {
               >
                 <Image
                   source={{
-                    uri: normalizarImagem(post.imagem_base64)?.uri,
+                    uri: `data:image/jpeg;base64,${post.imagem_base64}`,
                   }}
                   style={
                     estilos.imagemPost
@@ -1953,7 +1942,7 @@ export default function TelaPost({ route, navigation }) {
             {post?.imagem_base64 && (
               <Image
                 source={{
-                  uri: normalizarImagem(post.imagem_base64)?.uri,
+                  uri: `data:image/jpeg;base64,${post.imagem_base64}`,
                 }}
                 resizeMode="contain"
                 style={[

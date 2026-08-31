@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,57 +14,93 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase'; 
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { supabase } from '../lib/supabase';
 import { useEstilosTema, usarTema } from '../lib/tema';
 import { Alert } from '../lib/popup';
 
 export default function TelaLogin({ navigation }) {
   const estilos = useEstilosTema(estilosBase);
   const { cores } = usarTema();
-  const [identificador, setIdentificador] = useState(''); 
+  const [identificador, setIdentificador] = useState('');
   const [senha, setSenha] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
-const handleLogin = async () => {
-  if (!identificador || !senha) {
-    Alert.alert('Campos incompletos', 'Preencha email ou usuário e senha para entrar.');
-    return;
-  }
-
-  setCarregando(true);
-
-  try {
-  
-    const { data: usuarios, error: erroRpc } = await supabase.rpc('autenticar_usuario', {
-      p_identificador: identificador.trim(),
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '1063073119812-kj5e70s9c70qltq9ka4mh0basp75b5i2.apps.googleusercontent.com',
+      scopes: ['profile', 'email'],
     });
+  }, []);
 
-    if (erroRpc) throw erroRpc;
-    if (!usuarios || usuarios.length === 0) {
-      Alert.alert('Usuário não encontrado', 'Confira seus dados e tente novamente.');
+  const handleLogin = async () => {
+    if (!identificador || !senha) {
+      Alert.alert('Campos incompletos', 'Preencha email ou usuário e senha para entrar.');
       return;
     }
 
-    const emailDoUsuario = usuarios[0].email;
+    setCarregando(true);
 
+    try {
+      const { data: usuarios, error: erroRpc } = await supabase.rpc('autenticar_usuario', {
+        p_identificador: identificador.trim(),
+      });
 
-    const { data: authData, error: erroAuth } = await supabase.auth.signInWithPassword({
-      email: emailDoUsuario,
-      password: senha,
-    });
+      if (erroRpc) throw erroRpc;
+      if (!usuarios || usuarios.length === 0) {
+        Alert.alert('Usuário não encontrado', 'Confira seus dados e tente novamente.');
+        return;
+      }
 
-    if (erroAuth) throw erroAuth;
+      const emailDoUsuario = usuarios[0].email;
 
-    navigation.replace('MenuNavegacao', { id_usuario: usuarios[0].id_usuario });
+      const { data: authData, error: erroAuth } = await supabase.auth.signInWithPassword({
+        email: emailDoUsuario,
+        password: senha,
+      });
 
-  } catch (error) {
-    console.error('Erro no login:', error.message);
-    Alert.alert('Email ou senha inválidos', 'Confira seus dados e tente novamente.');
-  } finally {
-    setCarregando(false);
-  }
-};
+      if (erroAuth) throw erroAuth;
+
+      navigation.replace('MenuNavegacao', { id_usuario: usuarios[0].id_usuario });
+
+    } catch (error) {
+      console.error('Erro no login:', error.message);
+      Alert.alert('Email ou senha inválidos', 'Confira seus dados e tente novamente.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setCarregando(true);
+      await GoogleSignin.hasPlayServices();
+      const resposta = await GoogleSignin.signIn();
+
+      const idToken = resposta.data?.idToken || resposta.idToken;
+
+      if (!idToken) {
+        throw new Error('Não foi possível obter o ID Token do Google.');
+      }
+
+      const { data: authData, error: erroAuth } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+
+      if (erroAuth) throw erroAuth;
+
+      navigation.replace('MenuNavegacao', { id_usuario: authData.user.id });
+    } catch (error) {
+      console.error('Erro no login com Google:', error);
+      if (error.code !== '12501' && error.code !== 'CANCELLED') {
+        Alert.alert('Erro no login com Google', 'Não foi possível autenticar sua conta Google.');
+      }
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -149,7 +185,12 @@ const handleLogin = async () => {
             </View>
 
             <View style={estilos.secaoRodape}>
-              <TouchableOpacity style={estilos.botaoGoogle} activeOpacity={0.8}>
+              <TouchableOpacity 
+                style={estilos.botaoGoogle} 
+                activeOpacity={0.8}
+                onPress={handleGoogleLogin}
+                disabled={carregando}
+              >
                 <View style={estilos.containerIconeGoogle}>
                    <Text style={estilos.googleIconText}>G</Text>
                 </View>

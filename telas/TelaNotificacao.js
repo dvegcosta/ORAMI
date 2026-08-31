@@ -7,11 +7,8 @@ import { useEstilosTema, usarTema } from '../lib/tema';
 
 const imagemUri = (valor) => {
   if (!valor) return null;
-  const texto = String(valor);
-  if (texto.startsWith('data:') || texto.startsWith('http://') || texto.startsWith('https://')) {
-    return { uri: texto };
-  }
-  return { uri: `data:image/jpeg;base64,${texto}` };
+  if (String(valor).startsWith('data:') || String(valor).startsWith('http')) return { uri: String(valor) };
+  return { uri: `data:image/jpeg;base64,${valor}` };
 };
 
 export default function TelaNotificacao({ route, navigation }) {

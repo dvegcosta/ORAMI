@@ -9,7 +9,6 @@
   import * as Notifications from 'expo-notifications';
   import { supabase } from '../lib/supabase';
   import { useEstilosTema, usarTema } from '../lib/tema';
-import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, isStorageUrl } from '../lib/storage';
   import MenuLateral from './MenuLateral';
   import { Alert } from '../lib/popup';
 
@@ -190,15 +189,37 @@ import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, is
     };
 
     const uploadImagemStorage = async (base64) => {
-      if (!base64) return null;
-      const upload = await uploadImagemBase64({
-        bucket: BUCKETS.ROTINAS,
-        pasta: id_usuario,
-        base64,
-        mimeType: 'image/jpeg',
-        nomeBase: 'rotina',
-      });
-      return upload.publicUrl;
+      try {
+        const nomeArquivo = `${id_usuario}/${Date.now()}.jpg`;
+        
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        const { data, error } = await supabase.storage
+          .from('imgs_rotinas')
+          .upload(nomeArquivo, byteArray, {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
+        
+        if (error) {
+          console.error('Erro detalhado do Storage:', error);
+          throw error;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('imgs_rotinas')
+          .getPublicUrl(nomeArquivo);
+
+        return publicUrlData.publicUrl;
+      } catch (e) {
+        console.error('Erro no upload do Storage:', e.message || e);
+        return null;
+      }
     };
 
     const adicionarAtividadeBase = async (atividadeBase) => {
@@ -221,83 +242,52 @@ import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, is
      const salvarAtividade = async () => {
   if (!nomeAtividade.trim()) return;
   setSalvando(true);
-  let novaImagem = null;
   try {
     let urlImagem = null;
     if (imagemAtividade) {
       urlImagem = await uploadImagemStorage(imagemAtividade);
-      novaImagem = urlImagem;
     }
     const { error } = await supabase.from('atividades_rotina').insert({
       id_rotina: idRotina,
       nome_personalizado: nomeAtividade.trim(),
       horario_inicio: horarioInicio || '00:00',
-      duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos, 10) : null,
+      duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos) : null,
       imagem_personalizada: urlImagem,
       permitir_status: permitirNotificacao,
       realizado: false,
     });
     if (error) throw error;
-    novaImagem = null;
     encerrarFormulario();
     await carregarDadosRotina();
-  } catch (e) {
-    console.error(e);
-    if (novaImagem) {
-      await removerImagemStorage(novaImagem, BUCKETS.ROTINAS);
-    }
-    Alert.alert('Atividade não salva', 'Não foi possível salvar a atividade agora.');
-  }
+  } catch (e) { console.error(e); }
   finally { setSalvando(false); }
 };
 
     const salvarEdicao = async () => {
-      if (!nomeAtividade.trim() || !atividadeSelecionada) return;
-      setSalvando(true);
-      let novaImagem = null;
-      let imagemPersistida = false;
-
-      try {
-        let urlImagem = atividadeSelecionada.imagem_personalizada || null;
-
-        if (imagemAtividade && !isStorageUrl(imagemAtividade)) {
-          novaImagem = await uploadImagemStorage(imagemAtividade);
-          urlImagem = novaImagem;
-        } else if (urlImagem && !isStorageUrl(urlImagem)) {
-          // Migração transparente de uma imagem antiga que ainda esteja gravada como Base64.
-          novaImagem = await uploadImagemStorage(urlImagem);
-          urlImagem = novaImagem;
-        }
-
-        const { error } = await supabase
-          .from('atividades_rotina')
-          .update({
-            nome_personalizado: nomeAtividade.trim(),
-            horario_inicio: horarioInicio || '00:00',
-            duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos, 10) : null,
-            imagem_personalizada: urlImagem,
-            permitir_status: permitirNotificacao,
-          })
-          .eq('id_atividade_rotina', atividadeSelecionada.id_atividade_rotina);
-
-        if (error) throw error;
-        imagemPersistida = true;
-
-        if (novaImagem && atividadeSelecionada.imagem_personalizada) {
-          await removerImagemStorage(atividadeSelecionada.imagem_personalizada, BUCKETS.ROTINAS);
-        }
-
-        setEditando(false);
-        setModalVisualizarVisivel(false);
-        await carregarDadosRotina();
-      } catch (e) {
-        console.error(e);
-        if (novaImagem && !imagemPersistida) await removerImagemStorage(novaImagem, BUCKETS.ROTINAS);
-        Alert.alert('Imagem não salva', 'Não foi possível salvar a atividade agora.');
-      } finally {
-        setSalvando(false);
-      }
-    };
+  if (!nomeAtividade.trim() || !atividadeSelecionada) return;
+  setSalvando(true);
+  try {
+    let urlImagem = atividadeSelecionada.imagem_personalizada;
+    if (imagemAtividade && imagemAtividade !== atividadeSelecionada.imagem_personalizada) {
+      urlImagem = await uploadImagemStorage(imagemAtividade);
+    }
+    const { error } = await supabase
+      .from('atividades_rotina')
+      .update({
+        nome_personalizado: nomeAtividade.trim(),
+        horario_inicio: horarioInicio || '00:00',
+        duracao_minutos: duracaoMinutos ? parseInt(duracaoMinutos) : null,
+        imagem_personalizada: urlImagem,
+        permitir_status: permitirNotificacao,
+      })
+      .eq('id_atividade_rotina', atividadeSelecionada.id_atividade_rotina);
+    if (error) throw error;
+    setEditando(false);
+    setModalVisualizarVisivel(false);
+    await carregarDadosRotina();
+  } catch (e) { console.error(e); }
+  finally { setSalvando(false); }
+};
 
     const excluirAtividade = async () => {
       if (!atividadeSelecionada) return;
@@ -306,20 +296,11 @@ import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, is
           .from('atividades_rotina')
           .delete()
           .eq('id_atividade_rotina', atividadeSelecionada.id_atividade_rotina);
-
         if (error) throw error;
-
-        if (atividadeSelecionada.imagem_personalizada) {
-          await removerImagemStorage(atividadeSelecionada.imagem_personalizada, BUCKETS.ROTINAS);
-        }
-
         setModalVisualizarVisivel(false);
         setAtividadeSelecionada(null);
         await carregarDadosRotina();
-      } catch (e) {
-        console.error(e);
-        Alert.alert('Atividade não excluída', 'Não foi possível excluir a atividade agora.');
-      }
+      } catch (e) { console.error(e); }
     };
 
     const alternarRealizado = async (item) => {
@@ -355,7 +336,11 @@ import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage, is
 
     const imagemAtual = (item) => {
       if (!item || !item.imagem_personalizada) return null;
-      return normalizarImagem(item.imagem_personalizada);
+      const img = item.imagem_personalizada;
+      if (img.startsWith('http') || img.startsWith('data:image')) {
+        return { uri: img };
+      }
+      return { uri: `data:image/jpeg;base64,${img}` };
     };
 
     return (

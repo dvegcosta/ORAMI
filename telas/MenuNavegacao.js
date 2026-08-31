@@ -53,8 +53,7 @@ const TELAS_SEM_MENU = [
   'TelaComunicacao',
   'TelaCentralAjuda',
   'TelaCadastro',
-  'TelaAcessibilidade',
-  'TelaConversa'
+  'TelaAcessibilidade'
 ];
 
 const iconeDaRota = (nome) => {
@@ -150,15 +149,10 @@ export const BarraMenuGlobal = ({ rotaAtual }) => {
   }
 
   useEffect(() => {
-    // Em telas que usam a barra global, mas não são uma aba do menu
-    // (como TelaDM), mantemos o indicador visual sob a Home.
-    const indiceIndicador =
-      indiceAtivo === null
-        ? ROTAS_MENU.indexOf('TelaHome')
-        : indiceAtivo;
-
     const destino =
-      (indiceIndicador * TAB_WIDTH) + (TAB_WIDTH / 2) - (INDICADOR_LARGURA / 2);
+      indiceAtivo === null
+        ? 0
+        : (indiceAtivo * TAB_WIDTH) + (TAB_WIDTH / 2) - (INDICADOR_LARGURA / 2);
 
     Animated.spring(translateX, {
       toValue: destino,

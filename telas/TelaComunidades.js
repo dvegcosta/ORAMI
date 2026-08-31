@@ -18,7 +18,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useEstilosTema, usarTema } from '../lib/tema';
-import { normalizarImagem } from '../lib/storage';
 import { Alert } from '../lib/popup';
 
 const { width } = Dimensions.get('window');
@@ -158,12 +157,10 @@ export default function TelaComunidades({ route, navigation }) {
   );
 
   const renderizarImagem = (base64String) => {
-    if (!base64String) return null;
-    const texto = String(base64String);
-    if (texto.startsWith('data:') || texto.startsWith('http://') || texto.startsWith('https://')) {
-      return { uri: texto };
+    if (base64String) {
+      return { uri: `data:image/jpeg;base64,${base64String}` };
     }
-    return { uri: `data:image/jpeg;base64,${texto}` };
+    return null;
   };
 
   return (
@@ -316,7 +313,7 @@ export default function TelaComunidades({ route, navigation }) {
               >
                 <View style={estilos.linhaRoxaPerfil} />
                 {perfil.fotoBase64 ? (
-                  <Image source={normalizarImagem(perfil.fotoBase64)} style={estilos.fotoPerfilMenu} />
+                  <Image source={{ uri: `data:image/jpeg;base64,${perfil.fotoBase64}` }} style={estilos.fotoPerfilMenu} />
                 ) : (
                   <View style={[estilos.fotoPerfilMenu, estilos.fotoPlaceholder]}>
                     <Ionicons name="person" size={30} color="#FFF" />

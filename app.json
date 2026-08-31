@@ -37,7 +37,13 @@
           "sounds": []
         }
       ],
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1fd47cff-c268-4341-b667-b196d47a30ac"
+      }
+    }
   }
 }

@@ -87,13 +87,17 @@ useEffect(() => {
     setCarregando(false);
 
     cats.forEach((cat) => {
-
       if (cat.imagem) {
         setUrlsPictogramas(prev => ({ ...prev, [`cat_${cat.id_categoria_comunicacao}`]: cat.imagem }));
       } else {
         buscarPictograma(cat.nome).then((url) => {
           if (url) {
             setUrlsPictogramas(prev => ({ ...prev, [`cat_${cat.id_categoria_comunicacao}`]: url }));
+            supabase
+              .from('comunicacao_categorias')
+              .update({ imagem: url })
+              .eq('id_categoria_comunicacao', cat.id_categoria_comunicacao)
+              .then();
           }
         });
       }
@@ -119,10 +123,15 @@ const carregarItens = async (id_categoria) => {
     lista.forEach((item) => {
       if (item.imagem) {
         setUrlsPictogramas(prev => ({ ...prev, [`item_${item.id_item_comunicacao}`]: item.imagem }));
-      } else if (!urlsPictogramas[`item_${item.id_item_comunicacao}`]) {
+      } else {
         buscarPictograma(item.palavra).then((url) => {
           if (url) {
             setUrlsPictogramas(prev => ({ ...prev, [`item_${item.id_item_comunicacao}`]: url }));
+            supabase
+              .from('comunicacao_itens')
+              .update({ imagem: url })
+              .eq('id_item_comunicacao', item.id_item_comunicacao)
+              .then();
           }
         });
       }
@@ -207,7 +216,7 @@ const carregarItens = async (id_categoria) => {
     );
   };
 
-  const renderItem = ({ item }) => {
+ const renderItem = ({ item }) => {
     const url = urlsPictogramas[`item_${item.id_item_comunicacao}`];
     const selecionado = frase.some(f => f.id_item_comunicacao === item.id_item_comunicacao);
     return (
@@ -223,7 +232,15 @@ const carregarItens = async (id_categoria) => {
             <Ionicons name="image-outline" size={36} color="#8C77C2" />
           </View>
         )}
-        <Text style={estilos.txtItem} numberOfLines={2}>{item.palavra}</Text>
+        <Text 
+          style={[
+            estilos.txtItem, 
+            { color: selecionado ? '#000000' : cores.texto }
+          ]} 
+          numberOfLines={2}
+        >
+          {item.palavra}
+        </Text>
       </TouchableOpacity>
     );
   };

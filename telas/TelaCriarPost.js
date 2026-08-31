@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useEstilosTema } from '../lib/tema';
-import { normalizarImagem, uploadImagemBase64, BUCKETS, removerImagemStorage } from '../lib/storage';
 import { Alert } from '../lib/popup';
 
 export default function TelaCriarPost({ route, navigation }) {
@@ -86,23 +85,11 @@ export default function TelaCriarPost({ route, navigation }) {
     }
 
     setEnviando(true);
-    let imagemEnviada = null;
-
     try {
-      if (imagem?.base64) {
-        imagemEnviada = await uploadImagemBase64({
-          bucket: BUCKETS.POSTS,
-          pasta: id_usuario,
-          base64: imagem.base64,
-          mimeType: imagem.mimeType || 'image/jpeg',
-          nomeBase: 'post',
-        });
-      }
-
       const { error } = await supabase.rpc('sp_fluxo_criar_post', {
         p_autor: id_usuario,
         p_conteudo: texto,
-        p_img: imagemEnviada?.publicUrl || null,
+        p_img: imagem ? imagem.base64 : null,
         p_comunidades: comunidadesSelecionadas,
         p_permite_curtida: permitirCurtidas,
         p_permite_comentario: permitirComentarios
@@ -113,9 +100,6 @@ export default function TelaCriarPost({ route, navigation }) {
       Alert.alert('Publicação criada', 'Seu post já está disponível na comunidade.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (error) {
       console.error(error);
-      if (imagemEnviada?.publicUrl) {
-        await removerImagemStorage(imagemEnviada.publicUrl, BUCKETS.POSTS);
-      }
       Alert.alert('Publicação não concluída', 'Não foi possível publicar agora. Tente novamente em instantes.');
     } finally {
       setEnviando(false);
@@ -139,7 +123,7 @@ export default function TelaCriarPost({ route, navigation }) {
         {selecionadasFull.slice(0, 3).map((c, index) => (
           <View key={c.id_comunidade} style={[estilos.miniAvatarContainer, { marginLeft: index > 0 ? -12 : 0 }]}>
             {c.foto_comunidade ? (
-              <Image source={normalizarImagem(c.foto_comunidade)} style={estilos.miniAvatar} />
+              <Image source={{ uri: `data:image/jpeg;base64,${c.foto_comunidade}` }} style={estilos.miniAvatar} />
             ) : (
               <View style={[estilos.miniAvatar, { backgroundColor: '#E0E0E0' }]} />
             )}
@@ -165,7 +149,7 @@ export default function TelaCriarPost({ route, navigation }) {
         <View style={estilos.perfilRow}>
           <View style={estilos.perfilInfo}>
             {perfil.foto ? (
-              <Image source={normalizarImagem(perfil.foto)} style={estilos.fotoPerfil} />
+              <Image source={{ uri: `data:image/jpeg;base64,${perfil.foto}` }} style={estilos.fotoPerfil} />
             ) : (
               <View style={[estilos.fotoPerfil, { backgroundColor: '#C6DFFF' }]} />
             )}
@@ -232,7 +216,7 @@ export default function TelaCriarPost({ route, navigation }) {
                   <View style={estilos.infoComunidadeLista}>
                     {com.foto_comunidade ? (
                       <Image 
-                        source={normalizarImagem(com.foto_comunidade)} 
+                        source={{ uri: `data:image/jpeg;base64,${com.foto_comunidade}` }} 
                         style={estilos.fotoComunidade} 
                       />
                     ) : (

@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEstilosTema, usarTema } from '../lib/tema';
-import { normalizarImagem } from '../lib/storage';
 import { Alert } from '../lib/popup';
 
 const { width } = Dimensions.get('window');
@@ -74,7 +73,7 @@ export default function MenuLateral({ visivel, aoFechar, navigation, id_usuario,
             <View style={estilos.linhaRoxaPerfil} />
 
             {perfil?.fotoBase64 ? (
-              <Image source={normalizarImagem(perfil.fotoBase64)} style={estilos.fotoPerfilMenu} />
+              <Image source={{ uri: `data:image/jpeg;base64,${perfil.fotoBase64}` }} style={estilos.fotoPerfilMenu} />
             ) : (
               <View style={[estilos.fotoPerfilMenu, estilos.fotoPlaceholder]}>
                 <Ionicons name="person" size={30} color="#FFF" />
