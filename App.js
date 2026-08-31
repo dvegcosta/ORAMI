@@ -40,6 +40,7 @@ import TelaComunicacao from './telas/TelaComunicacao';
 import TelaCriarRotina from './telas/TelaCriarRotina';
 import TelaRegistrosDiarios from './telas/TelaRegistrosDiarios';
 import TelaContPasta from './telas/TelaContPasta';
+import TelaGuias from './telas/TelaGuias';
 import { ProvedorTema, usarTema } from './lib/tema';
 import { ProvedorPopup } from './lib/popup';
 
@@ -220,6 +221,11 @@ function RotasApp() {
               name="TelaRegistrosDiarios"
               component={TelaRegistrosDiarios}
             />
+       
+            <Pilha.Screen name="TelaGuias"
+             component={TelaGuias} 
+            />
+
           </Pilha.Navigator>
 
           <BarraMenuGlobal rotaAtual={rotaAtual} />
